@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MussicApp.Models;
-
+using BCrypt.Net;
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
@@ -24,25 +24,27 @@ public class AuthController : ControllerBase
             Username = dto.Username,
             Email = dto.Email,
             PhoneNumber = dto.PhoneNumber,
-            Password = dto.Password
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "User successfully registered" });
+        return Ok(new { message = "User registered" });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Username == dto.Username);
 
         if (user == null)
-            return Unauthorized(new { message = "User not found" });
+            return Unauthorized("User not found");
 
-        if (user.Password != dto.Password)
-            return Unauthorized(new { message = "Invalid password" });
+        bool isValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
+
+        if (!isValid)
+            return Unauthorized("Invalid password");
 
         return Ok(new { message = "Logged in successfully" });
     }

@@ -14,22 +14,36 @@ public class TrackService : ITrackService
     }
 
 
-    public async Task<Track> AddTrackAsync(IFormFile file, string title, string artist, string album)
+    public async Task<Track> AddTrackAsync(IFormFile file, IFormFile? cover, string title, string artist, int? albumId)
     {
-        using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
+        byte[] fileBytes;
+        using (var ms = new MemoryStream())
+        {
+            await file.CopyToAsync(ms);
+            fileBytes = ms.ToArray();
+        }
 
+        byte[]? coverBytes = null;
+        string? coverType = null;
+
+        if (cover != null)
+        {
+            using var ms2 = new MemoryStream();
+            await cover.CopyToAsync(ms2);
+            coverBytes = ms2.ToArray();
+            coverType = cover.ContentType;
+        }
 
         var track = new Track
         {
             Title = title,
             Artist = artist,
-            Album = album,
-            FileData = ms.ToArray(),
+            AlbumId = albumId,
+            FileData = fileBytes,
             FileType = file.ContentType,
-            Duration = TimeSpan.Zero
+            CoverData = coverBytes,
+            CoverType = coverType
         };
-
 
         _db.Tracks.Add(track);
         await _db.SaveChangesAsync();

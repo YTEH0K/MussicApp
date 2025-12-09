@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MussicApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251206155545_Initial")]
-    partial class Initial
+    [Migration("20251209162643_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,33 @@ namespace MussicApp.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MussicApp.Models.Album", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Artist")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("CoverData")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("CoverType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Albums");
+                });
+
             modelBuilder.Entity("MussicApp.Models.Track", b =>
                 {
                     b.Property<int>("Id")
@@ -32,10 +59,18 @@ namespace MussicApp.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Album")
-                        .HasColumnType("text");
+                    b.Property<int?>("AlbumId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Artist")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("CoverData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("CoverType")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -59,6 +94,8 @@ namespace MussicApp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AlbumId");
+
                     b.ToTable("Tracks");
                 });
 
@@ -74,7 +111,7 @@ namespace MussicApp.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Password")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -89,6 +126,20 @@ namespace MussicApp.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("MussicApp.Models.Track", b =>
+                {
+                    b.HasOne("MussicApp.Models.Album", "Album")
+                        .WithMany("Tracks")
+                        .HasForeignKey("AlbumId");
+
+                    b.Navigation("Album");
+                });
+
+            modelBuilder.Entity("MussicApp.Models.Album", b =>
+                {
+                    b.Navigation("Tracks");
                 });
 #pragma warning restore 612, 618
         }
