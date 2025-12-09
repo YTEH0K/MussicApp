@@ -32,18 +32,21 @@ public class TracksController : ControllerBase
     }
 
     [HttpPost("upload")]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string artist, [FromForm] string album)
+    public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string artist, [FromForm] IFormFile cover, [FromForm] int? albumId)
     {
+        if (file == null || file.Length == 0)
+            return BadRequest("Track file required");
+
+        if (cover == null || cover.Length == 0)
+            return BadRequest("Cover image required");
 
         Console.WriteLine($"File received: {file?.FileName}, size: {file?.Length}");
 
         if (file == null || file.Length == 0) return BadRequest("File required");
 
-
-        var track = await _trackService.AddTrackAsync(file, title, artist, album);
+        var track = await _trackService.AddTrackAsync(file, cover, title, artist, albumId);
         return CreatedAtAction(nameof(Get), new { id = track.Id }, track);
     }
-
 
     [HttpGet("stream/{id}")]
     public async Task<IActionResult> Stream(int id)

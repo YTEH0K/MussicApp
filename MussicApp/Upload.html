@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+    <h1>Upload Track</h1>
+    <form action="http://localhost:5001/api/tracks/upload" method="post" enctype="multipart/form-data">
+        <label>Title:</label> <br>
+        <input type="text" name="title"><br><br>
+
+        <label>Artist:</label> <br>
+        <input type="text" name="artist"><br><br>
+
+        <label>Album:</label> <br>
+        <input type="text" name="album"><br><br>
+
+        <label>File:</label> <br>
+        <input type="file" name="file"><br><br>
+
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
