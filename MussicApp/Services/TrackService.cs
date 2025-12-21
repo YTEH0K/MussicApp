@@ -1,37 +1,49 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MongoDB.Driver;
+using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MussicApp.Models;
-using MussicApp.Services;
 
+namespace MussicApp.Services;
 
 public class TrackService : ITrackService
 {
-    private readonly AppDbContext _db;
+    private readonly IMongoCollection<Track> _tracks;
+    private readonly IFileStorageService _files;
 
-
-    public TrackService(AppDbContext db)
+    public TrackService(
+        IMongoClient client,
+        IOptions<MongoDbSettings> options,
+        IFileStorageService files)
     {
-        _db = db;
+        var db = client.GetDatabase(options.Value.DatabaseName);
+        _tracks = db.GetCollection<Track>("tracks");
+        _files = files;
     }
 
-
-    public async Task<Track> AddTrackAsync(IFormFile file, IFormFile? cover, string title, string artist, int? albumId)
+    public async Task<Track> AddTrackAsync(
+        IFormFile file,
+        IFormFile? cover,
+        string title,
+        string artist,
+        string? albumId)
     {
-        byte[] fileBytes;
-        using (var ms = new MemoryStream())
+        ObjectId audioFileId;
+        using (var stream = file.OpenReadStream())
         {
-            await file.CopyToAsync(ms);
-            fileBytes = ms.ToArray();
+            audioFileId = await _files.UploadAsync(
+                stream,
+                file.FileName,
+                file.ContentType);
         }
 
-        byte[]? coverBytes = null;
-        string? coverType = null;
-
+        ObjectId? coverFileId = null;
         if (cover != null)
         {
-            using var ms2 = new MemoryStream();
-            await cover.CopyToAsync(ms2);
-            coverBytes = ms2.ToArray();
-            coverType = cover.ContentType;
+            using var coverStream = cover.OpenReadStream();
+            coverFileId = await _files.UploadAsync(
+                coverStream,
+                cover.FileName,
+                cover.ContentType);
         }
 
         var track = new Track
@@ -39,26 +51,21 @@ public class TrackService : ITrackService
             Title = title,
             Artist = artist,
             AlbumId = albumId,
-            FileData = fileBytes,
-            FileType = file.ContentType,
-            CoverData = coverBytes,
-            CoverType = coverType
+            FileId = audioFileId.ToString(),
+            CoverFileId = coverFileId?.ToString()
         };
 
-        _db.Tracks.Add(track);
-        await _db.SaveChangesAsync();
+        await _tracks.InsertOneAsync(track);
         return track;
     }
 
-
     public async Task<IEnumerable<Track>> GetAllAsync()
     {
-        return await _db.Tracks.OrderBy(t => t.Title).ToListAsync();
+        return await _tracks.Find(_ => true).ToListAsync();
     }
 
-
-    public async Task<Track?> GetByIdAsync(int id)
+    public async Task<Track?> GetByIdAsync(string id)
     {
-        return await _db.Tracks.FindAsync(id);
+        return await _tracks.Find(t => t.Id == id).FirstOrDefaultAsync();
     }
 }

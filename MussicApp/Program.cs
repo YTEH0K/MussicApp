@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using MongoDB.Driver;
 using MussicApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+/* ---------- Form options (upload פאיכ³ג) ---------- */
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 50 * 1024 * 1024;
@@ -13,13 +15,30 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartHeadersLengthLimit = int.MaxValue;
 });
 
+/* ---------- Kestrel ---------- */
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 50 * 1024 * 1024;
-    options.ListenLocalhost(5001); // HTTP
-    options.ListenLocalhost(7000, listenOptions => listenOptions.UseHttps()); // HTTPS
+    options.ListenAnyIP(8080);
 });
 
+/* ---------- MongoDB ---------- */
+builder.Services.Configure<MongoDbSettings>(
+    builder.Configuration.GetSection("MongoDb"));
+
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{
+    var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    return new MongoClient(settings.ConnectionString);
+});
+
+/* ---------- Services ---------- */
+builder.Services.AddScoped<IAlbumService, AlbumService>();
+builder.Services.AddScoped<ITrackService, TrackService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IFileStorageService, GridFsStorageService>();
+
+/* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
 {
     options.MaxModelBindingCollectionSize = int.MaxValue;
@@ -27,15 +46,10 @@ builder.Services.AddControllers(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
-builder.Services.AddScoped<ITrackService, TrackService>();
-
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var app = builder.Build();
 
+/* ---------- Middleware ---------- */
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -43,7 +57,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
 

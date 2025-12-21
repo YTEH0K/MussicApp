@@ -1,11 +1,14 @@
 ﻿using MussicApp.Models;
 
-namespace MussicApp.Services
+public interface ITrackService
 {
-    public interface ITrackService
-    {
-        Task<Track> AddTrackAsync(IFormFile file, IFormFile? cover, string title, string artist, int? albumId);
-        Task<IEnumerable<Track>> GetAllAsync();
-        Task<Track?> GetByIdAsync(int id);
-    }
+    Task<Track> AddTrackAsync(
+        IFormFile file,
+        IFormFile? cover,
+        string title,
+        string artist,
+        string? albumId);
+
+    Task<IEnumerable<Track>> GetAllAsync();
+    Task<Track?> GetByIdAsync(string id);
 }
