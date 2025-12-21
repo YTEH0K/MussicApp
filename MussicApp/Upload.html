@@ -1,21 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Google Login Test</title>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
 <body>
-    <h1>Upload Track</h1>
-    <form action="http://localhost:5001/api/tracks/upload" method="post" enctype="multipart/form-data">
-        <label>Title:</label> <br>
-        <input type="text" name="title"><br><br>
 
-        <label>Artist:</label> <br>
-        <input type="text" name="artist"><br><br>
+    <h2>Google Login Test</h2>
 
-        <label>Album:</label> <br>
-        <input type="text" name="album"><br><br>
+    <div id="g_id_onload"
+         data-client_id="1001601235326-aqvtqu4ik2j3fgj4p58dt3gaf5ukumj0.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
 
-        <label>File:</label> <br>
-        <input type="file" name="file"><br><br>
+    <div class="g_id_signin"></div>
 
-        <button type="submit">Upload</button>
-    </form>
+    <script>
+        function handleCredentialResponse(response) {
+            console.log("ID TOKEN:");
+            console.log(response.credential);
+            alert("Token logged to console");
+        }
+    </script>
+
 </body>
 </html>

@@ -1,105 +1,93 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using MussicApp.Models;
+using MussicApp.Services;
+using Microsoft.AspNetCore.Http;
 
 [ApiController]
 [Route("api/[controller]")]
 public class AlbumController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IAlbumService _albums;
 
-    public AlbumController(AppDbContext db)
+    public AlbumController(IAlbumService albums)
     {
-        _db = db;
+        _albums = albums;
     }
 
     [HttpPost("create")]
-    public async Task<IActionResult> Create(
-        [FromForm] string title,
-        [FromForm] string artist,
-        [FromForm] IFormFile? cover)
+    public async Task<IActionResult> Create([FromForm] string title, [FromForm] string artist)
     {
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(artist))
-            return BadRequest("Title and artist are required.");
+            return BadRequest("Title and Artist are required.");
 
-        var album = new Album
-        {
-            Title = title,
-            Artist = artist
-        };
-
-        if (cover != null)
-        {
-            using var ms = new MemoryStream();
-            await cover.CopyToAsync(ms);
-            album.CoverData = ms.ToArray();
-            album.CoverType = cover.ContentType;
-        }
-
-        _db.Albums.Add(album);
-        await _db.SaveChangesAsync();
-
-        return Ok(new
-        {
-            message = "Album created successfully",
-            album.Id,
-            album.Title,
-            album.Artist,
-            HasCover = cover != null
-        });
+        var album = await _albums.CreateAsync(title, artist);
+        return Ok(album);
     }
 
-    [HttpPost("add-track")]
-    public async Task<IActionResult> AddTrackToAlbum([FromForm] int albumId, [FromForm] int trackId)
+    [HttpPost("{id}/upload-cover")]
+    public async Task<IActionResult> UploadCover(string id, [FromForm] IFormFile cover)
     {
-        var album = await _db.Albums
-            .Include(a => a.AlbumTracks)
-            .FirstOrDefaultAsync(a => a.Id == albumId);
+        if (cover == null) return BadRequest("Cover file is required.");
 
-        var track = await _db.Tracks.FindAsync(trackId);
+        var success = await _albums.AddCoverAsync(id, cover);
+        if (!success) return NotFound("Album not found");
 
-        if (album == null) return NotFound("Album not found");
-        if (track == null) return NotFound("Track not found");
+        return Ok(new { message = "Cover uploaded successfully" });
+    }
 
-        if (!album.AlbumTracks.Any(at => at.TrackId == trackId))
-        {
-            album.AlbumTracks.Add(new AlbumTrack { AlbumId = albumId, TrackId = trackId });
-            await _db.SaveChangesAsync();
-        }
+    [HttpPost("{id}/add-track")]
+    public async Task<IActionResult> AddTrack(
+    string id,
+    [FromBody] AddTrackToAlbumDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.TrackId))
+            return BadRequest("TrackId is required");
 
-        return Ok(new
-        {
-            message = "Track added to album",
-            albumId,
-            trackId
-        });
+        var success = await _albums.AddTrackAsync(id, dto.TrackId);
+
+        if (!success)
+            return NotFound("Album not found");
+
+        return Ok(new { message = "Track added to album successfully" });
+    }
+
+    [HttpGet("{id}/tracks")]
+    public async Task<IActionResult> GetTracks(string id)
+    {
+        var tracks = await _albums.GetTracksAsync(id);
+        return Ok(tracks);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetAlbum(int id)
+    public async Task<IActionResult> Get(string id)
     {
-        var album = await _db.Albums
-            .Include(a => a.AlbumTracks)
-                .ThenInclude(at => at.Track)
-            .FirstOrDefaultAsync(a => a.Id == id);
-
-        if (album == null) return NotFound();
-
-        return Ok(new
-        {
-            album.Id,
-            album.Title,
-            album.Artist,
-            HasCover = album.CoverData != null,
-            Tracks = album.AlbumTracks.Select(at => new
-            {
-                at.Track.Id,
-                at.Track.Title,
-                at.Track.Artist,
-                at.Track.Duration,
-                HasCover = at.Track.CoverData != null
-            })
-        });
+        var album = await _albums.GetByIdAsync(id);
+        return album == null ? NotFound() : Ok(album);
     }
 
+    [HttpGet("all/bum")]
+    public async Task<IActionResult> GetAll()
+    {
+        var albums = await _albums.GetAllAsync();
+        return Ok(albums);
+    }
+
+    [HttpGet("{id}/cover")]
+    public async Task<IActionResult> GetCover(string id)
+    {
+        var (data, contentType) = await _albums.GetCoverAsync(id);
+        if (data == null) return NotFound();
+
+        return File(data, contentType ?? "application/octet-stream");
+    }
+}
+
+public class CreateAlbumDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Artist { get; set; } = string.Empty;
+}
+
+public class AddTrackToAlbumDto
+{
+    public string TrackId { get; set; } = string.Empty;
 }

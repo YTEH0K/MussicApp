@@ -1,14 +1,20 @@
-﻿namespace MussicApp.Models
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace MussicApp.Models;
+
+public class Album
 {
-    public class Album
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Artist { get; set; } = string.Empty;
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = null!;
 
-        public byte[]? CoverData { get; set; }
-        public string? CoverType { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Artist { get; set; } = string.Empty;
 
-        public ICollection<AlbumTrack> AlbumTracks { get; set; } = new List<AlbumTrack>();
-    }
+    [BsonRepresentation(BsonType.ObjectId)]
+    public List<string> TrackIds { get; set; } = new();
+
+    public string? CoverFileId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

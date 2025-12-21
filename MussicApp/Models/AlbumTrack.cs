@@ -1,11 +1,18 @@
-﻿namespace MussicApp.Models
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace MussicApp.Models
 {
     public class AlbumTrack
     {
-        public int AlbumId { get; set; }
-        public Album Album { get; set; } = null!;
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; } = null!;
 
-        public int TrackId { get; set; }
-        public Track Track { get; set; } = null!;
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string AlbumId { get; set; } = null!;
+
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string TrackId { get; set; } = null!;
     }
 }
