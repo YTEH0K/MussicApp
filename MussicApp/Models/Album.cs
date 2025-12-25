@@ -13,6 +13,9 @@ public class Album
     public string Artist { get; set; } = string.Empty;
 
     [BsonRepresentation(BsonType.ObjectId)]
+    public string OwnerId { get; set; }
+
+    [BsonRepresentation(BsonType.ObjectId)]
     public List<string> TrackIds { get; set; } = new();
 
     public string? CoverFileId { get; set; }

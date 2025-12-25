@@ -19,7 +19,11 @@ public class AlbumService : IAlbumService
         _gridFS = new GridFSBucket(db);
     }
 
-    public async Task<Album> CreateAsync(string title, string artist, IFormFile? cover = null)
+    public async Task<Album> CreateAsync(
+        string title,
+        string artist,
+        string ownerId,
+        IFormFile? cover)
     {
         string? coverFileId = null;
 
@@ -27,19 +31,27 @@ public class AlbumService : IAlbumService
         {
             using var ms = new MemoryStream();
             await cover.CopyToAsync(ms);
-            coverFileId = (await _gridFS.UploadFromBytesAsync(cover.FileName, ms.ToArray())).ToString();
+
+            coverFileId = (
+                await _gridFS.UploadFromBytesAsync(
+                    cover.FileName,
+                    ms.ToArray()
+                )
+            ).ToString();
         }
 
         var album = new Album
         {
             Title = title,
             Artist = artist,
+            OwnerId = ownerId,
             CoverFileId = coverFileId
         };
 
         await _albums.InsertOneAsync(album);
         return album;
     }
+
 
     public async Task<bool> AddCoverAsync(string albumId, IFormFile cover)
     {

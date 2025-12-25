@@ -9,10 +9,12 @@ using MussicApp.Services;
 public class AuthController : ControllerBase
 {
     private readonly IUserService _users;
+    private readonly JwtService _jwt;
 
-    public AuthController(IUserService users)
+    public AuthController(IUserService users, JwtService jwt)
     {
         _users = users;
+        _jwt = jwt;
     }
 
     [HttpPost("register")]
@@ -49,10 +51,11 @@ public class AuthController : ControllerBase
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials");
 
+        var token = _jwt.GenerateToken(user);
+
         return Ok(new
         {
-            message = "Logged in successfully",
-            user.Id,
+            token,
             user.Username,
             user.Email
         });
@@ -96,15 +99,17 @@ public class AuthController : ControllerBase
             await _users.CreateAsync(user);
         }
 
+        var token = _jwt.GenerateToken(user);
+
         return Ok(new
         {
-            message = "Google login successful",
-            user.Id,
+            token,
             user.Username,
             user.Email
         });
     }
 }
+
 
 
 public record RegisterDto(

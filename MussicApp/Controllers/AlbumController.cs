@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using MussicApp.Services;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using MussicApp.Services;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -13,20 +15,39 @@ public class AlbumController : ControllerBase
         _albums = albums;
     }
 
+    [Authorize]
     [HttpPost("create")]
-    public async Task<IActionResult> Create([FromForm] string title, [FromForm] string artist)
+    public async Task<IActionResult> Create(
+        [FromForm] string title,
+        [FromForm] IFormFile? cover)
     {
-        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(artist))
-            return BadRequest("Title and Artist are required.");
+        if (string.IsNullOrWhiteSpace(title))
+            return BadRequest("Title is required");
 
-        var album = await _albums.CreateAsync(title, artist);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var username = User.Identity!.Name!;
+
+        var album = await _albums.CreateAsync(
+            title,
+            username,
+            userId,
+            cover
+        );
+
         return Ok(album);
     }
 
+    [Authorize]
     [HttpPost("{id}/upload-cover")]
     public async Task<IActionResult> UploadCover(string id, [FromForm] IFormFile cover)
     {
         if (cover == null) return BadRequest("Cover file is required.");
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var album = await _albums.GetByIdAsync(id);
+
+        if (album.OwnerId != userId)
+            return Forbid("You are not the owner of this album.");
 
         var success = await _albums.AddCoverAsync(id, cover);
         if (!success) return NotFound("Album not found");
@@ -34,6 +55,7 @@ public class AlbumController : ControllerBase
         return Ok(new { message = "Cover uploaded successfully" });
     }
 
+    [Authorize]
     [HttpPost("{id}/add-track")]
     public async Task<IActionResult> AddTrack(
     string id,
@@ -42,8 +64,14 @@ public class AlbumController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.TrackId))
             return BadRequest("TrackId is required");
 
-        var success = await _albums.AddTrackAsync(id, dto.TrackId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var album = await _albums.GetByIdAsync(id);
 
+        if (album.OwnerId != userId)
+            return Forbid("You are not the owner of this album.");
+
+
+        var success = await _albums.AddTrackAsync(id, dto.TrackId);
         if (!success)
             return NotFound("Album not found");
 
