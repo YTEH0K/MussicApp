@@ -13,6 +13,10 @@ public class Track
     public string Artist { get; set; } = string.Empty;
 
     [BsonRepresentation(BsonType.ObjectId)]
+    public string OwnerId { get; set; }
+    public string OwnerUsername { get; set; }
+
+    [BsonRepresentation(BsonType.ObjectId)]
     public string? AlbumId { get; set; }
 
     [BsonRepresentation(BsonType.ObjectId)]

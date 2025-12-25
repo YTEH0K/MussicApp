@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MussicApp.Services;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -31,19 +33,54 @@ public class TracksController : ControllerBase
         return Ok(track);
     }
 
+    [Authorize]
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
-        [FromForm] IFormFile file,
-        [FromForm] string title,
-        [FromForm] string artist,
-        [FromForm] IFormFile? cover,
-        [FromForm] string? albumId)
+    [FromForm] IFormFile file,
+    [FromForm] string title,
+    [FromForm] IFormFile? cover,
+    [FromForm] string? albumId)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var username = User.Identity!.Name!;
+
         var track = await _trackService.AddTrackAsync(
-            file, cover, title, artist, albumId);
+            file,
+            cover,
+            title,
+            username,
+            albumId,
+            userId
+        );
 
         return CreatedAtAction(nameof(Get), new { id = track.Id }, track);
     }
+
+    [Authorize]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+        var track = await _trackService.GetByIdAsync(id);
+        if (track == null)
+            return NotFound();
+
+        if (track.OwnerId != userId)
+            return Forbid();
+
+        await _trackService.DeleteAsync(track);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpGet("my")]
+    public async Task<IActionResult> MyTracks()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        return Ok(await _trackService.GetByOwnerIdAsync(userId));
+    }
+
 
     [HttpGet("stream/{id}")]
     public async Task<IActionResult> Stream(string id)

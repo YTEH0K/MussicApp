@@ -25,7 +25,8 @@ public class TrackService : ITrackService
         IFormFile? cover,
         string title,
         string artist,
-        string? albumId)
+        string? albumId,
+        string ownerId)
     {
         ObjectId audioFileId;
         using (var stream = file.OpenReadStream())
@@ -51,12 +52,29 @@ public class TrackService : ITrackService
             Title = title,
             Artist = artist,
             AlbumId = albumId,
+            OwnerId = ownerId,
+            OwnerUsername = artist,
             FileId = audioFileId.ToString(),
             CoverFileId = coverFileId?.ToString()
         };
 
         await _tracks.InsertOneAsync(track);
         return track;
+    }
+
+    public async Task DeleteAsync(Track track)
+    {
+        await _files.DeleteAsync(ObjectId.Parse(track.FileId));
+
+        if (!string.IsNullOrEmpty(track.CoverFileId))
+            await _files.DeleteAsync(ObjectId.Parse(track.CoverFileId));
+
+        await _tracks.DeleteOneAsync(t => t.Id == track.Id);
+    }
+
+    public async Task<IEnumerable<Track>> GetByOwnerIdAsync(string ownerId)
+    {
+        return await _tracks.Find(t => t.OwnerId == ownerId).ToListAsync();
     }
 
     public async Task<IEnumerable<Track>> GetAllAsync()

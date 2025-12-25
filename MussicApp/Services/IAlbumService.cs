@@ -3,7 +3,7 @@ using MussicApp.Models;
 
 public interface IAlbumService
 {
-    Task<Album> CreateAsync(string title, string artist, IFormFile? cover = null);
+    Task<Album> CreateAsync(string title, string username,string userId, IFormFile? cover = null);
     Task<bool> AddCoverAsync(string albumId, IFormFile cover);
     Task<bool> AddTrackAsync(string albumId, string trackId);
     Task<Album?> GetByIdAsync(string albumId);
