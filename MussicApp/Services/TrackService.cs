@@ -21,12 +21,12 @@ public class TrackService : ITrackService
     }
 
     public async Task<Track> AddTrackAsync(
-        IFormFile file,
-        IFormFile? cover,
-        string title,
-        string artist,
-        string? albumId,
-        string ownerId)
+    IFormFile file,
+    IFormFile cover,
+    string title,
+    string artist,
+    string? albumId,
+    string ownerId)
     {
         ObjectId audioFileId;
         using (var stream = file.OpenReadStream())
@@ -37,10 +37,9 @@ public class TrackService : ITrackService
                 file.ContentType);
         }
 
-        ObjectId? coverFileId = null;
-        if (cover != null)
+        ObjectId coverFileId;
+        using (var coverStream = cover.OpenReadStream())
         {
-            using var coverStream = cover.OpenReadStream();
             coverFileId = await _files.UploadAsync(
                 coverStream,
                 cover.FileName,
@@ -54,13 +53,15 @@ public class TrackService : ITrackService
             AlbumId = albumId,
             OwnerId = ownerId,
             OwnerUsername = artist,
+
             FileId = audioFileId.ToString(),
-            CoverFileId = coverFileId?.ToString()
+            CoverFileId = coverFileId.ToString()
         };
 
         await _tracks.InsertOneAsync(track);
         return track;
     }
+
 
     public async Task DeleteAsync(Track track)
     {
