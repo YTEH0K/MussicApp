@@ -4,7 +4,7 @@ public interface ITrackService
 {
     Task<Track> AddTrackAsync(
         IFormFile file,
-        IFormFile? cover,
+        IFormFile cover,
         string title,
         string artist,
         string? albumId,
