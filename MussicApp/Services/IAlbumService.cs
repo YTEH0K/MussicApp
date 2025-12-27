@@ -7,6 +7,8 @@ public interface IAlbumService
     Task<bool> AddCoverAsync(string albumId, IFormFile cover);
     Task<bool> AddTrackAsync(string albumId, string trackId);
     Task<Album?> GetByIdAsync(string albumId);
+    Task<IEnumerable<Album>> GetByOwnerAsync(string ownerId);
+
     Task<(byte[]? Data, string? ContentType)> GetCoverAsync(string albumId);
     Task<IEnumerable<Track>> GetTracksAsync(string albumId);
     Task<IEnumerable<Album>> GetAllAsync();
