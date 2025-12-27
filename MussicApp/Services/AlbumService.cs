@@ -87,6 +87,14 @@ public class AlbumService : IAlbumService
         return await _albums.Find(a => a.Id == albumId).FirstOrDefaultAsync();
     }
 
+    public async Task<IEnumerable<Album>> GetByOwnerAsync(string ownerId)
+    {
+        return await _albums
+            .Find(a => a.OwnerId == ownerId)
+            .ToListAsync();
+    }
+
+
     public async Task<(byte[]? Data, string? ContentType)> GetCoverAsync(string albumId)
     {
         var album = await _albums.Find(a => a.Id == albumId).FirstOrDefaultAsync();

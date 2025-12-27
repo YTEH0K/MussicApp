@@ -13,8 +13,17 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string? PasswordHash { get; set; } = string.Empty;
+
     public string? GoogleId { get; set; }
     public AuthProvider Provider { get; set; }
+
+    public bool EmailConfirmed { get; set; } = false;
+    public string? EmailConfirmCode { get; set; }
+    public DateTime? EmailConfirmExpiresAt { get; set; }
+
+
+    public string? PasswordResetCode { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

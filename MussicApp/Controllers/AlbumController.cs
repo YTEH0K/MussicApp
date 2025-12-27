@@ -99,6 +99,16 @@ public class AlbumController : ControllerBase
         return Ok(albums);
     }
 
+    [Authorize]
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyAlbums()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var albums = await _albums.GetByOwnerAsync(userId);
+        return Ok(albums);
+    }
+
+
     [HttpGet("{id}/cover")]
     public async Task<IActionResult> GetCover(string id)
     {
