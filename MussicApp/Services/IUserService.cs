@@ -12,6 +12,7 @@ namespace MussicApp.Services
         Task<bool> ExistsByEmailAsync(string email);
         Task<bool> ExistsByUsernameAsync(string username);
 
+        Task UpdateAsync(User user);
 
 
         Task<User?> GetByGoogleIdAsync(string googleId);
