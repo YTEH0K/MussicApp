@@ -62,4 +62,10 @@ public class UserService : IUserService
     {
         await _users.InsertOneAsync(user);
     }
+
+    public async Task UpdateAsync(User user)
+    {
+        await _users.ReplaceOneAsync(u => u.Id == user.Id, user);
+    }
+
 }

@@ -1,6 +1,7 @@
 ﻿using BCrypt.Net;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Cryptography;
 using MussicApp.Models;
 using MussicApp.Services;
 
@@ -10,11 +11,13 @@ public class AuthController : ControllerBase
 {
     private readonly IUserService _users;
     private readonly JwtService _jwt;
+    private readonly IEmailService _email;
 
-    public AuthController(IUserService users, JwtService jwt)
+    public AuthController(IUserService users, JwtService jwt, IEmailService email)
     {
         _users = users;
         _jwt = jwt;
+        _email = email;
     }
 
     [HttpPost("register")]
@@ -26,19 +29,104 @@ public class AuthController : ControllerBase
         if (await _users.ExistsByUsernameAsync(dto.Username))
             return BadRequest("Username already taken");
 
+        var code = RandomNumberGenerator
+            .GetInt32(100000, 999999)
+            .ToString();
+
         var user = new User
         {
             Username = dto.Username,
             Email = dto.Email,
             PhoneNumber = dto.PhoneNumber,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Provider = AuthProvider.Local
+            Provider = AuthProvider.Local,
+
+            EmailConfirmed = false,
+            EmailConfirmCode = code,
+            EmailConfirmExpiresAt = DateTime.UtcNow.AddMinutes(10)
         };
 
         await _users.CreateAsync(user);
 
-        return Ok(new { message = "User registered successfully" });
+        await _email.SendEmailAsync(
+            user.Email,
+            "Confirm your MussicApp account",
+            $"""
+        <h2>Email confirmation</h2>
+        <p>Your confirmation code:</p>
+        <h1>{code}</h1>
+        <p>This code expires in 10 minutes.</p>
+        """
+        );
+
+        return Ok("Confirmation code sent to email");
     }
+
+
+    [HttpPost("confirm")]
+    public async Task<IActionResult> ConfirmRegister(ConfirmEmailDto dto)
+    {
+        var user = await _users.GetByEmailAsync(dto.Email);
+
+        if (user == null ||
+            user.EmailConfirmCode != dto.Code ||
+            user.EmailConfirmExpiresAt < DateTime.UtcNow)
+            return BadRequest("Invalid or expired code");
+
+        user.EmailConfirmed = true;
+        user.EmailConfirmCode = null;
+        user.EmailConfirmExpiresAt = null;
+
+        await _users.UpdateAsync(user);
+
+        var token = _jwt.GenerateToken(user);
+
+        return Ok(new
+        {
+            token,
+            user.Username,
+            user.Email
+        });
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+    {
+        var user = await _users.GetByEmailAsync(dto.Email);
+
+        if (user != null)
+        {
+            var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+
+            user.PasswordResetCode = code;
+            user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(15);
+
+            await _users.UpdateAsync(user);
+
+        }
+
+        return Ok("If this email exists, instructions were sent");
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+    {
+        var user = await _users.GetByEmailAsync(dto.Email);
+
+        if (user == null ||
+            user.PasswordResetCode != dto.Code ||
+            user.PasswordResetExpiresAt < DateTime.UtcNow)
+            return BadRequest("Invalid or expired code");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.PasswordResetCode = null;
+        user.PasswordResetExpiresAt = null;
+
+        await _users.UpdateAsync(user);
+
+        return Ok("Password updated");
+    }
+
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDto dto)
@@ -50,6 +138,9 @@ public class AuthController : ControllerBase
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials");
+
+        if (!user.EmailConfirmed)
+            return Unauthorized("Confirm your email first");
 
         var token = _jwt.GenerateToken(user);
 
@@ -93,7 +184,8 @@ public class AuthController : ControllerBase
                 GoogleId = payload.Subject,
                 Email = payload.Email,
                 Username = username,
-                Provider = AuthProvider.Google
+                Provider = AuthProvider.Google,
+                EmailConfirmed = true
             };
 
             await _users.CreateAsync(user);
@@ -122,6 +214,15 @@ public record RegisterDto(
 public record LoginDto(
     string Email,
     string Password
+);
+public record ConfirmEmailDto(string Email, string Code);
+
+public record ForgotPasswordDto(string Email);
+
+public record ResetPasswordDto(
+    string Email,
+    string Code,
+    string NewPassword
 );
 
 public class GoogleAuthDto
