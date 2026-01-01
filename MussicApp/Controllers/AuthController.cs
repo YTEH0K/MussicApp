@@ -200,6 +200,46 @@ public class AuthController : ControllerBase
             user.Email
         });
     }
+
+    [HttpPost("like")]
+    public async Task<IActionResult> LikeTrack(LikeTrackDto dto)
+    {
+        var userId = User.FindFirst("id")?.Value;
+        if (userId == null) return Unauthorized();
+
+        await _users.AddLikeAsync(userId, dto.TrackId);
+        return Ok("Track liked");
+    }
+
+    [HttpPost("unlike")]
+    public async Task<IActionResult> UnlikeTrack(LikeTrackDto dto)
+    {
+        var userId = User.FindFirst("id")?.Value;
+        if (userId == null) return Unauthorized();
+
+        await _users.RemoveLikeAsync(userId, dto.TrackId);
+        return Ok("Track unliked");
+    }
+
+    [HttpGet("liked-tracks")]
+    public async Task<IActionResult> GetLikedTracks()
+    {
+        var userId = User.FindFirst("id")?.Value;
+        if (userId == null) return Unauthorized();
+
+        var likedTrackIds = await _users.GetLikedTrackIdsAsync(userId);
+        return Ok(likedTrackIds);
+    }
+
+    [HttpPost("change-avatar")]
+    public async Task<IActionResult> ChangeAvatar(ChangeAvatarDto dto)
+    {
+        var userId = User.FindFirst("id")?.Value;
+        if (userId == null) return Unauthorized();
+
+        await _users.ChangeAvatarAsync(userId, dto.AvatarUrl);
+        return Ok("Avatar updated");
+    }
 }
 
 
@@ -218,6 +258,10 @@ public record LoginDto(
 public record ConfirmEmailDto(string Email, string Code);
 
 public record ForgotPasswordDto(string Email);
+
+public record LikeTrackDto(string TrackId);
+
+public record ChangeAvatarDto(string AvatarUrl);
 
 public record ResetPasswordDto(
     string Email,
