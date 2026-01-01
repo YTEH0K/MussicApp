@@ -17,5 +17,12 @@ namespace MussicApp.Services
 
         Task<User?> GetByGoogleIdAsync(string googleId);
         Task CreateAsync(User user);
+
+
+
+        Task AddLikeAsync(string userId, string trackId);
+        Task RemoveLikeAsync(string userId, string trackId);
+        Task<IEnumerable<string>> GetLikedTrackIdsAsync(string userId);
+        Task ChangeAvatarAsync(string userId, string avatarUrl);
     }
 }

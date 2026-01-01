@@ -25,6 +25,9 @@ public class User
     public string? PasswordResetCode { get; set; }
     public DateTime? PasswordResetExpiresAt { get; set; }
 
+    public string? AvatarUrl { get; set; }
+    public List<string> LikedTrackIds { get; set; } = new();
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

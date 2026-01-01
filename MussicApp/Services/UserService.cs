@@ -53,9 +53,9 @@ public class UserService : IUserService
 
     public async Task<bool> ExistsByUsernameAsync(string username)
     {
-       return await _users
-            .Find(u => u.Username == username)
-            .AnyAsync();
+        return await _users
+             .Find(u => u.Username == username)
+             .AnyAsync();
     }
 
     public async Task CreateAsync(User user)
@@ -66,6 +66,30 @@ public class UserService : IUserService
     public async Task UpdateAsync(User user)
     {
         await _users.ReplaceOneAsync(u => u.Id == user.Id, user);
+    }
+
+    public async Task AddLikeAsync(string userId, string trackId)
+    {
+        var update = Builders<User>.Update.AddToSet(u => u.LikedTrackIds, trackId);
+        await _users.UpdateOneAsync(u => u.Id == userId, update);
+    }
+
+    public async Task RemoveLikeAsync(string userId, string trackId)
+    {
+        var update = Builders<User>.Update.Pull(u => u.LikedTrackIds, trackId);
+        await _users.UpdateOneAsync(u => u.Id == userId, update);
+    }
+
+    public async Task<IEnumerable<string>> GetLikedTrackIdsAsync(string userId)
+    {
+        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        return user?.LikedTrackIds ?? Enumerable.Empty<string>();
+    }
+
+    public async Task ChangeAvatarAsync(string userId, string avatarUrl)
+    {
+        var update = Builders<User>.Update.Set(u => u.AvatarUrl, avatarUrl);
+        await _users.UpdateOneAsync(u => u.Id == userId, update);
     }
 
 }
