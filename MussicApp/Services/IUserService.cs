@@ -23,6 +23,7 @@ namespace MussicApp.Services
         Task AddLikeAsync(string userId, string trackId);
         Task RemoveLikeAsync(string userId, string trackId);
         Task<IEnumerable<string>> GetLikedTrackIdsAsync(string userId);
-        Task ChangeAvatarAsync(string userId, string avatarUrl);
+        Task SetAvatarAsync(string userId, IFormFile avatar);
+        Task<(byte[] Data, string ContentType)?> GetAvatarAsync(string userId);
     }
 }

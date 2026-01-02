@@ -232,14 +232,28 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("change-avatar")]
-    public async Task<IActionResult> ChangeAvatar(ChangeAvatarDto dto)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ChangeAvatar([FromForm] IFormFile avatar)
     {
         var userId = User.FindFirst("id")?.Value;
         if (userId == null) return Unauthorized();
 
-        await _users.ChangeAvatarAsync(userId, dto.AvatarUrl);
+        if (avatar == null || avatar.Length == 0)
+            return BadRequest("Avatar file is required");
+
+        await _users.SetAvatarAsync(userId, avatar);
         return Ok("Avatar updated");
     }
+
+    [HttpGet("avatar/{userId}")]
+    public async Task<IActionResult> GetAvatar(string userId)
+    {
+        var avatar = await _users.GetAvatarAsync(userId);
+        if (avatar == null) return NotFound();
+
+        return File(avatar.Value.Data, avatar.Value.ContentType);
+    }
+
 }
 
 
@@ -260,8 +274,6 @@ public record ConfirmEmailDto(string Email, string Code);
 public record ForgotPasswordDto(string Email);
 
 public record LikeTrackDto(string TrackId);
-
-public record ChangeAvatarDto(string AvatarUrl);
 
 public record ResetPasswordDto(
     string Email,

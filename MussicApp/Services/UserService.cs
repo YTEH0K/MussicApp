@@ -1,12 +1,13 @@
 ﻿using MongoDB.Driver;
 using Microsoft.Extensions.Options;
 using MussicApp.Models;
-
+using MongoDB.Driver.GridFS;
 namespace MussicApp.Services;
 
 public class UserService : IUserService
 {
     private readonly IMongoCollection<User> _users;
+    private readonly GridFSBucket _gridFS;
 
     public UserService(
         IMongoClient client,
@@ -14,6 +15,8 @@ public class UserService : IUserService
     {
         var db = client.GetDatabase(options.Value.DatabaseName);
         _users = db.GetCollection<User>("users");
+
+        _gridFS = new GridFSBucket(db);
     }
 
     public async Task<User?> GetByEmailAsync(string email)
@@ -86,10 +89,47 @@ public class UserService : IUserService
         return user?.LikedTrackIds ?? Enumerable.Empty<string>();
     }
 
-    public async Task ChangeAvatarAsync(string userId, string avatarUrl)
+    public async Task SetAvatarAsync(string userId, IFormFile avatar)
     {
-        var update = Builders<User>.Update.Set(u => u.AvatarUrl, avatarUrl);
-        await _users.UpdateOneAsync(u => u.Id == userId, update);
+        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null) throw new Exception("User not found");
+
+        using var ms = new MemoryStream();
+        await avatar.CopyToAsync(ms);
+
+        var fileId = await _gridFS.UploadFromBytesAsync(
+            avatar.FileName,
+            ms.ToArray(),
+            new GridFSUploadOptions
+            {
+                Metadata = new MongoDB.Bson.BsonDocument
+                {
+                    { "ContentType", avatar.ContentType }
+                }
+            });
+
+        user.AvatarFileId = fileId.ToString();
+        await UpdateAsync(user);
+    }
+
+    public async Task<(byte[] Data, string ContentType)?> GetAvatarAsync(string userId)
+    {
+        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null || user.AvatarFileId == null)
+            return null;
+
+        var objectId = MongoDB.Bson.ObjectId.Parse(user.AvatarFileId);
+
+        var bytes = await _gridFS.DownloadAsBytesAsync(objectId);
+        var fileInfo = await _gridFS
+            .Find(Builders<GridFSFileInfo>.Filter.Eq("_id", objectId))
+            .FirstOrDefaultAsync();
+
+        var contentType =
+            fileInfo?.Metadata?["ContentType"]?.AsString
+            ?? "application/octet-stream";
+
+        return (bytes, contentType);
     }
 
 }
