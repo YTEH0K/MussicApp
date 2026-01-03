@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using MussicApp.Models;
 using MussicApp.Services;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -201,6 +202,7 @@ public class AuthController : ControllerBase
         });
     }
 
+    [Authorize]
     [HttpPost("like")]
     public async Task<IActionResult> LikeTrack(LikeTrackDto dto)
     {
@@ -211,8 +213,10 @@ public class AuthController : ControllerBase
         return Ok("Track liked");
     }
 
+    [Authorize]
     [HttpPost("unlike")]
     public async Task<IActionResult> UnlikeTrack(LikeTrackDto dto)
+
     {
         var userId = User.FindFirst("id")?.Value;
         if (userId == null) return Unauthorized();
@@ -221,8 +225,10 @@ public class AuthController : ControllerBase
         return Ok("Track unliked");
     }
 
+    [Authorize]
     [HttpGet("liked-tracks")]
     public async Task<IActionResult> GetLikedTracks()
+
     {
         var userId = User.FindFirst("id")?.Value;
         if (userId == null) return Unauthorized();
@@ -231,6 +237,7 @@ public class AuthController : ControllerBase
         return Ok(likedTrackIds);
     }
 
+    [Authorize]
     [HttpPost("change-avatar")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> ChangeAvatar([FromForm] IFormFile avatar)
