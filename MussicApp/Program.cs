@@ -26,6 +26,17 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ListenAnyIP(8080);
 });
 
+/* ---------- CORS ---------- */
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 /* ---------- MongoDB ---------- */
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDb"));
@@ -43,6 +54,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFileStorageService, GridFsStorageService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IIconService, IconService>();
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
@@ -87,6 +99,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
