@@ -1,10 +1,11 @@
 ﻿using BCrypt.Net;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using MussicApp.Models;
 using MussicApp.Services;
-using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -85,6 +86,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token,
+            user.Id,
             user.Username,
             user.Email
         });
@@ -103,7 +105,6 @@ public class AuthController : ControllerBase
             user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(15);
 
             await _users.UpdateAsync(user);
-
         }
 
         return Ok("If this email exists, instructions were sent");
@@ -148,6 +149,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token,
+            user.Id,
             user.Username,
             user.Email
         });
@@ -197,28 +199,30 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token,
+            user.Id,
             user.Username,
             user.Email
         });
     }
 
+
     [Authorize]
     [HttpPost("like")]
     public async Task<IActionResult> LikeTrack(LikeTrackDto dto)
     {
-        var userId = User.FindFirst("id")?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized();
 
         await _users.AddLikeAsync(userId, dto.TrackId);
         return Ok("Track liked");
     }
 
+
     [Authorize]
     [HttpPost("unlike")]
     public async Task<IActionResult> UnlikeTrack(LikeTrackDto dto)
-
     {
-        var userId = User.FindFirst("id")?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized();
 
         await _users.RemoveLikeAsync(userId, dto.TrackId);
@@ -228,21 +232,21 @@ public class AuthController : ControllerBase
     [Authorize]
     [HttpGet("liked-tracks")]
     public async Task<IActionResult> GetLikedTracks()
-
     {
-        var userId = User.FindFirst("id")?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized();
 
         var likedTrackIds = await _users.GetLikedTrackIdsAsync(userId);
         return Ok(likedTrackIds);
     }
 
+
     [Authorize]
     [HttpPost("change-avatar")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> ChangeAvatar([FromForm] IFormFile avatar)
     {
-        var userId = User.FindFirst("id")?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized();
 
         if (avatar == null || avatar.Length == 0)
@@ -260,10 +264,7 @@ public class AuthController : ControllerBase
 
         return File(avatar.Value.Data, avatar.Value.ContentType);
     }
-
 }
-
-
 
 public record RegisterDto(
     string Username,
@@ -292,4 +293,3 @@ public class GoogleAuthDto
 {
     public string IdToken { get; set; } = string.Empty;
 }
-
