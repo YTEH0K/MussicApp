@@ -24,13 +24,12 @@ public class AlbumController : ControllerBase
         if (string.IsNullOrWhiteSpace(title))
             return BadRequest("Title is required");
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var username = User.Identity!.Name!;
+        var ownerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         var album = await _albums.CreateAsync(
             title,
-            username,
-            userId,
+            User.Identity!.Name!,
+            ownerId,
             cover
         );
 
@@ -38,12 +37,12 @@ public class AlbumController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("{id}/upload-cover")]
-    public async Task<IActionResult> UploadCover(string id, [FromForm] IFormFile cover)
+    [HttpPost("{id:guid}/upload-cover")]
+    public async Task<IActionResult> UploadCover(Guid id, [FromForm] IFormFile cover)
     {
         if (cover == null) return BadRequest("Cover file is required.");
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var album = await _albums.GetByIdAsync(id);
 
         if (album.OwnerId != userId)
@@ -56,37 +55,37 @@ public class AlbumController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("{id}/add-track")]
+    [HttpPost("{id:guid}/add-track")]
     public async Task<IActionResult> AddTrack(
-    string id,
+    Guid id,
     [FromBody] AddTrackToAlbumDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.TrackId))
             return BadRequest("TrackId is required");
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var ownerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var album = await _albums.GetByIdAsync(id);
 
-        if (album.OwnerId != userId)
+        if (album.OwnerId != ownerId)
             return Forbid("You are not the owner of this album.");
 
 
-        var success = await _albums.AddTrackAsync(id, dto.TrackId);
+        var success = await _albums.AddTrackAsync(id, Guid.Parse(dto.TrackId));
         if (!success)
             return NotFound("Album not found");
 
         return Ok(new { message = "Track added to album successfully" });
     }
 
-    [HttpGet("{id}/tracks")]
-    public async Task<IActionResult> GetTracks(string id)
+    [HttpGet("{id:guid}/tracks")]
+    public async Task<IActionResult> GetTracks(Guid id)
     {
         var tracks = await _albums.GetTracksAsync(id);
         return Ok(tracks);
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> Get(string id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Get(Guid id)
     {
         var album = await _albums.GetByIdAsync(id);
         return album == null ? NotFound() : Ok(album);
@@ -103,14 +102,14 @@ public class AlbumController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> GetMyAlbums()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var albums = await _albums.GetByOwnerAsync(userId);
+        var ownerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var albums = await _albums.GetByOwnerAsync(ownerId);
         return Ok(albums);
     }
 
 
-    [HttpGet("{id}/cover")]
-    public async Task<IActionResult> GetCover(string id)
+    [HttpGet("{id:guid}/cover")]
+    public async Task<IActionResult> GetCover(Guid id)
     {
         var (data, contentType) = await _albums.GetCoverAsync(id);
         if (data == null) return NotFound();

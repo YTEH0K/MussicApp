@@ -8,27 +8,27 @@ using System.Security.Claims;
 [Route("api/[controller]")]
 public class TracksController : ControllerBase
 {
-    private readonly ITrackService _trackService;
-    private readonly IFileStorageService _fileStorage;
+    private readonly ITrackService _tracks;
+    private readonly IFileStorageService _files;
 
     public TracksController(
-        ITrackService trackService,
-        IFileStorageService fileStorage)
+        ITrackService tracks,
+        IFileStorageService files)
     {
-        _trackService = trackService;
-        _fileStorage = fileStorage;
+        _tracks = tracks;
+        _files = files;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        return Ok(await _trackService.GetAllAsync());
+        return Ok(await _tracks.GetAllAsync());
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> Get(string id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Get(Guid id)
     {
-        var track = await _trackService.GetByIdAsync(id);
+        var track = await _tracks.GetByIdAsync(id);
         if (track == null) return NotFound();
         return Ok(track);
     }
@@ -36,10 +36,11 @@ public class TracksController : ControllerBase
     [Authorize]
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
-    [FromForm] IFormFile file,
-    [FromForm] string title,
-    [FromForm] IFormFile cover,
-    [FromForm] string? albumId)
+        [FromForm] IFormFile file,
+        [FromForm] IFormFile cover,
+        [FromForm] string title,
+        [FromForm] Guid artistId,
+        [FromForm] Guid? albumId)
     {
         if (file == null || file.Length == 0)
             return BadRequest("Audio file is required");
@@ -50,52 +51,41 @@ public class TracksController : ControllerBase
         if (string.IsNullOrWhiteSpace(title))
             return BadRequest("Title is required");
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var username = User.Identity!.Name!;
+        var ownerId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
-        var track = await _trackService.AddTrackAsync(
+        var track = await _tracks.CreateAsync(
             file,
             cover,
             title,
-            username,
+            artistId,
             albumId,
-            userId
+            ownerId
         );
 
-        return CreatedAtAction(nameof(Get), new { id = track.Id }, track);
+        return CreatedAtAction(
+            nameof(Get),
+            new { id = track.Id },
+            track);
     }
-
-    [HttpGet("{id}/cover")]
-    public async Task<IActionResult> GetCover(string id)
-    {
-        var track = await _trackService.GetByIdAsync(id);
-        if (track == null)
-            return NotFound("Track not found");
-
-        if (string.IsNullOrEmpty(track.CoverFileId))
-            return NotFound("Cover not found");
-
-        var (stream, contentType) =
-            await _fileStorage.DownloadAsync(ObjectId.Parse(track.CoverFileId));
-
-        return File(stream, contentType ?? "image/jpeg");
-    }
-
 
     [Authorize]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var ownerId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
-        var track = await _trackService.GetByIdAsync(id);
+        var track = await _tracks.GetByIdAsync(id);
         if (track == null)
             return NotFound();
 
-        if (track.OwnerId != userId)
+        if (track.OwnerId != ownerId)
             return Forbid();
 
-        await _trackService.DeleteAsync(track);
+        await _tracks.DeleteAsync(track);
         return NoContent();
     }
 
@@ -103,20 +93,60 @@ public class TracksController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> MyTracks()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        return Ok(await _trackService.GetByOwnerIdAsync(userId));
+        var ownerId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        return Ok(await _tracks.GetByOwnerIdAsync(ownerId));
     }
 
 
-    [HttpGet("stream/{id}")]
-    public async Task<IActionResult> Stream(string id)
+    [HttpGet("stream/{id:guid}")]
+    public async Task<IActionResult> Stream(Guid id)
     {
-        var track = await _trackService.GetByIdAsync(id);
+        var track = await _tracks.GetByIdAsync(id);
         if (track == null) return NotFound();
 
         var (stream, contentType) =
-            await _fileStorage.DownloadAsync(ObjectId.Parse(track.FileId));
+            await _files.DownloadAsync(
+                ObjectId.Parse(track.FileId));
 
-        return File(stream, contentType, enableRangeProcessing: true);
+        return File(
+            stream,
+            contentType ?? "audio/mpeg",
+            enableRangeProcessing: true);
     }
+
+    [HttpGet("{id:guid}/cover")]
+    public async Task<IActionResult> GetCover(Guid id)
+    {
+        var track = await _tracks.GetByIdAsync(id);
+        if (track?.CoverFileId == null)
+            return NotFound();
+
+        var (stream, contentType) =
+            await _files.DownloadAsync(
+                ObjectId.Parse(track.CoverFileId));
+
+        return File(stream, contentType ?? "image/jpeg");
+    }
+
+    [HttpGet("artists")]
+    public async Task<IActionResult> GetArtists()
+    {
+        var artists = await _tracks.GetAllArtistsAsync();
+        return Ok(artists);
+    }
+
+    [HttpGet("{id:guid}/artist")]
+    public async Task<IActionResult> GetArtist(Guid id)
+    {
+        var track = await _tracks.GetByIdAsync(id);
+        if (track == null) return NotFound();
+
+        var artist = track.Artist;
+        return Ok(artist);
+    }
+
+
 }

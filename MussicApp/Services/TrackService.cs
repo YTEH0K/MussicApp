@@ -2,89 +2,151 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MussicApp.Models;
+using MussicApp.Data;
+using MongoDB.Driver.GridFS;
+using Microsoft.EntityFrameworkCore;
 
 namespace MussicApp.Services;
 
 public class TrackService : ITrackService
 {
-    private readonly IMongoCollection<Track> _tracks;
-    private readonly IFileStorageService _files;
+    private readonly AppDbContext _db;
+    private readonly GridFSBucket _gridFS;
 
     public TrackService(
-        IMongoClient client,
-        IOptions<MongoDbSettings> options,
-        IFileStorageService files)
+        AppDbContext db,
+        IMongoClient mongo,
+        IOptions<MongoDbSettings> options)
     {
-        var db = client.GetDatabase(options.Value.DatabaseName);
-        _tracks = db.GetCollection<Track>("tracks");
-        _files = files;
+        _db = db;
+        _gridFS = new GridFSBucket(
+            mongo.GetDatabase(options.Value.DatabaseName)
+        );
     }
 
-    public async Task<Track> AddTrackAsync(
-    IFormFile file,
-    IFormFile cover,
-    string title,
-    string artist,
-    string? albumId,
-    string ownerId)
+    public async Task<Track> CreateAsync(
+        IFormFile audio,
+        IFormFile cover,
+        string title,
+        Guid artistId,
+        Guid? albumId,
+        Guid ownerId)
     {
-        ObjectId audioFileId;
-        using (var stream = file.OpenReadStream())
+        if (audio == null || audio.Length == 0)
+            throw new ArgumentException("Audio file is required");
+
+        if (cover == null || cover.Length == 0)
+            throw new ArgumentException("Cover file is required");
+
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title is required");
+
+        ObjectId audioId = ObjectId.Empty;
+        ObjectId coverId = ObjectId.Empty;
+
+        try
         {
-            audioFileId = await _files.UploadAsync(
-                stream,
-                file.FileName,
-                file.ContentType);
+            // ===== Upload audio =====
+            using (var audioStream = audio.OpenReadStream())
+            {
+                audioId = await _gridFS.UploadFromStreamAsync(
+                    audio.FileName,
+                    audioStream,
+                    new GridFSUploadOptions
+                    {
+                        Metadata = new BsonDocument
+                        {
+                        { "ContentType", audio.ContentType },
+                        { "Type", "audio" }
+                        }
+                    });
+            }
+
+            // ===== Upload cover =====
+            using (var coverStream = cover.OpenReadStream())
+            {
+                coverId = await _gridFS.UploadFromStreamAsync(
+                    cover.FileName,
+                    coverStream,
+                    new GridFSUploadOptions
+                    {
+                        Metadata = new BsonDocument
+                        {
+                        { "ContentType", cover.ContentType },
+                        { "Type", "cover" }
+                        }
+                    });
+            }
+
+            var track = new Track
+            {
+                Id = Guid.NewGuid(),
+                Title = title,
+                ArtistId = artistId,
+                AlbumId = albumId,
+                OwnerId = ownerId,
+                FileId = audioId.ToString(),
+                CoverFileId = coverId.ToString(),
+                UploadedAt = DateTime.UtcNow
+            };
+
+            _db.Tracks.Add(track);
+            await _db.SaveChangesAsync();
+
+            return track;
         }
-
-        ObjectId coverFileId;
-        using (var coverStream = cover.OpenReadStream())
+        catch
         {
-            coverFileId = await _files.UploadAsync(
-                coverStream,
-                cover.FileName,
-                cover.ContentType);
+
+            if (audioId != ObjectId.Empty)
+                await _gridFS.DeleteAsync(audioId);
+
+            if (coverId != ObjectId.Empty)
+                await _gridFS.DeleteAsync(coverId);
+
+            throw;
         }
-
-        var track = new Track
-        {
-            Title = title,
-            Artist = artist,
-            AlbumId = albumId,
-            OwnerId = ownerId,
-            OwnerUsername = artist,
-
-            FileId = audioFileId.ToString(),
-            CoverFileId = coverFileId.ToString()
-        };
-
-        await _tracks.InsertOneAsync(track);
-        return track;
     }
+
 
 
     public async Task DeleteAsync(Track track)
     {
-        await _files.DeleteAsync(ObjectId.Parse(track.FileId));
+        await _gridFS.DeleteAsync(ObjectId.Parse(track.FileId));
 
         if (!string.IsNullOrEmpty(track.CoverFileId))
-            await _files.DeleteAsync(ObjectId.Parse(track.CoverFileId));
+            await _gridFS.DeleteAsync(ObjectId.Parse(track.CoverFileId));
 
-        await _tracks.DeleteOneAsync(t => t.Id == track.Id);
+        _db.Tracks.Remove(track);
+        await _db.SaveChangesAsync();
     }
 
-    public async Task<IEnumerable<Track>> GetByOwnerIdAsync(string ownerId)
+    public async Task<IEnumerable<Track>> GetByOwnerIdAsync(Guid ownerId)
     {
-        return await _tracks.Find(t => t.OwnerId == ownerId).ToListAsync();
+        return await _db.Tracks.Where(t => t.OwnerId == ownerId).ToListAsync();
     }
 
     public async Task<IEnumerable<Track>> GetAllAsync()
     {
-        return await _tracks.Find(_ => true).ToListAsync();
+        return await _db.Tracks.ToListAsync();
     }
 
-    public async Task<Track?> GetByIdAsync(string id)
+    public async Task<Track?> GetByIdAsync(Guid id)
     {
-        return await _tracks.Find(t => t.Id == id).FirstOrDefaultAsync();
+        return await _db.Tracks
+           .Include(t => t.Album)
+           .FirstOrDefaultAsync(t => t.Id == id);
     }
+
+
+    public async Task<IEnumerable<Artist>> GetAllArtistsAsync()
+    {
+        return await _db.Artists.ToListAsync();
+    }
+
+    public async Task<Artist?> GetArtistByIdAsync(Guid id)
+    {
+        return await _db.Artists.FindAsync(id);
+    }
+
 }

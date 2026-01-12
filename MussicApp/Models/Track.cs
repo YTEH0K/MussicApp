@@ -5,26 +5,26 @@ namespace MussicApp.Models;
 
 public class Track
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = null!;
+    public Guid Id { get; set; }
 
     public string Title { get; set; } = string.Empty;
-    public string Artist { get; set; } = string.Empty;
+    //public string Artist { get; set; } = string.Empty;
+    public Guid ArtistId { get; set; }
+    public Artist? Artist { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string OwnerId { get; set; }
-    public string OwnerUsername { get; set; }
+    public Guid OwnerId { get; set; }
+    public User Owner { get; set; } = null!;
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string? AlbumId { get; set; }
+    public Guid? AlbumId { get; set; }
+    public Album? Album { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
     public string FileId { get; set; } = null!;
-
-    [BsonRepresentation(BsonType.ObjectId)]
     public string? CoverFileId { get; set; }
 
     public TimeSpan Duration { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<UserLikedTrack> LikedByUsers { get; set; }
+        = new List<UserLikedTrack>();
 }
+

@@ -3,16 +3,19 @@ using MussicApp.Models;
 
 public interface ITrackService
 {
-    Task<Track> AddTrackAsync(
-        IFormFile file,
-        IFormFile cover,
-        string title,
-        string artist,
-        string? albumId,
-        string ownerId);
+    Task<Track> CreateAsync(
+       IFormFile file,
+       IFormFile cover,
+       string title,
+       Guid artistId,
+       Guid? albumId,
+       Guid ownerId);
+
 
     Task<IEnumerable<Track>> GetAllAsync();
-    Task<Track?> GetByIdAsync(string id);
+    Task<Track?> GetByIdAsync(Guid id);
     Task DeleteAsync(Track track);
-    Task<IEnumerable<Track>> GetByOwnerIdAsync(string ownerId);
+    Task<IEnumerable<Track>> GetByOwnerIdAsync(Guid ownerId);
+
+    Task<IEnumerable<Artist>> GetAllArtistsAsync();
 }
