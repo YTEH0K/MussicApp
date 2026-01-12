@@ -2,107 +2,113 @@
 using Microsoft.Extensions.Options;
 using MussicApp.Models;
 using MongoDB.Driver.GridFS;
+using MussicApp.Data;
+using Microsoft.EntityFrameworkCore;
+using MongoDB.Bson;
 namespace MussicApp.Services;
 
 public class UserService : IUserService
 {
-    private readonly IMongoCollection<User> _users;
-    private readonly GridFSBucket _gridFS;
+    private readonly AppDbContext _db;
+    private readonly GridFSBucket _gridFs;
 
     public UserService(
-        IMongoClient client,
+        AppDbContext db,
+        IMongoClient mongo,
         IOptions<MongoDbSettings> options)
     {
-        var db = client.GetDatabase(options.Value.DatabaseName);
-        _users = db.GetCollection<User>("users");
-
-        _gridFS = new GridFSBucket(db);
+        _db = db;
+        _gridFs = new GridFSBucket(
+            mongo.GetDatabase(options.Value.DatabaseName));
     }
 
-    public async Task<User?> GetByEmailAsync(string email)
-    {
-        return await _users
-            .Find(u => u.Email == email)
-            .FirstOrDefaultAsync();
-    }
+    public Task<User?> GetByIdAsync(Guid id) =>
+        _db.Users.FirstOrDefaultAsync(u => u.Id == id);
 
-    public async Task<User?> GetByUsernameAsync(string username)
-    {
-        return await _users
-            .Find(u => u.Username == username)
-            .FirstOrDefaultAsync();
-    }
+    public Task<User?> GetByEmailAsync(string email) =>
+        _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-    public async Task<User?> GetByGoogleIdAsync(string googleId)
-    {
-        return await _users
-            .Find(u => u.GoogleId == googleId)
-            .FirstOrDefaultAsync();
-    }
+    public Task<User?> GetByUsernameAsync(string username) =>
+        _db.Users.FirstOrDefaultAsync(u => u.Username == username);
 
-    public async Task<bool> ExistsAsync(string email)
-    {
-        return await _users
-            .Find(u => u.Email == email)
-            .AnyAsync();
-    }
+    public Task<User?> GetByGoogleIdAsync(string googleId) =>
+        _db.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId);
 
-    public async Task<bool> ExistsByEmailAsync(string email)
-    {
-        return await _users
-            .Find(u => u.Email == email)
-            .AnyAsync();
-    }
+    public Task<bool> ExistsByEmailAsync(string email) =>
+        _db.Users.AnyAsync(u => u.Email == email);
 
-    public async Task<bool> ExistsByUsernameAsync(string username)
-    {
-        return await _users
-             .Find(u => u.Username == username)
-             .AnyAsync();
-    }
+    public Task<bool> ExistsByUsernameAsync(string username) =>
+        _db.Users.AnyAsync(u => u.Username == username);
+
 
     public async Task CreateAsync(User user)
     {
-        await _users.InsertOneAsync(user);
+        user.Id = Guid.NewGuid();
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(User user)
     {
-        await _users.ReplaceOneAsync(u => u.Id == user.Id, user);
+        _db.Users.Update(user);
+        await _db.SaveChangesAsync();
     }
 
-    public async Task AddLikeAsync(string userId, string trackId)
+
+    public async Task AddLikeAsync(Guid userId, Guid trackId)
     {
-        var update = Builders<User>.Update.AddToSet(u => u.LikedTrackIds, trackId);
-        await _users.UpdateOneAsync(u => u.Id == userId, update);
+        var exists = await _db.UserLikedTracks
+            .AnyAsync(x => x.UserId == userId && x.TrackId == trackId);
+
+        if (!exists)
+        {
+            _db.UserLikedTracks.Add(new UserLikedTrack
+            {
+                UserId = userId,
+                TrackId = trackId
+            });
+
+            await _db.SaveChangesAsync();
+        }
     }
 
-    public async Task RemoveLikeAsync(string userId, string trackId)
+    public async Task RemoveLikeAsync(Guid userId, Guid trackId)
     {
-        var update = Builders<User>.Update.Pull(u => u.LikedTrackIds, trackId);
-        await _users.UpdateOneAsync(u => u.Id == userId, update);
+        var like = await _db.UserLikedTracks
+            .FirstOrDefaultAsync(x =>
+                x.UserId == userId && x.TrackId == trackId);
+
+        if (like != null)
+        {
+            _db.UserLikedTracks.Remove(like);
+            await _db.SaveChangesAsync();
+        }
     }
 
-    public async Task<IEnumerable<string>> GetLikedTrackIdsAsync(string userId)
+
+    public async Task<IEnumerable<Guid>> GetLikedTrackIdsAsync(Guid userId)
     {
-        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-        return user?.LikedTrackIds ?? Enumerable.Empty<string>();
+        return await _db.UserLikedTracks
+            .Where(x => x.UserId == userId)
+            .Select(x => x.TrackId)
+            .ToListAsync();
     }
 
-    public async Task SetAvatarAsync(string userId, IFormFile avatar)
+
+    public async Task SetAvatarAsync(Guid userId, IFormFile avatar)
     {
-        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-        if (user == null) throw new Exception("User not found");
+        var user = await GetByIdAsync(userId)
+            ?? throw new Exception("User not found");
 
         using var ms = new MemoryStream();
         await avatar.CopyToAsync(ms);
 
-        var fileId = await _gridFS.UploadFromBytesAsync(
+        var fileId = await _gridFs.UploadFromBytesAsync(
             avatar.FileName,
             ms.ToArray(),
             new GridFSUploadOptions
             {
-                Metadata = new MongoDB.Bson.BsonDocument
+                Metadata = new BsonDocument
                 {
                     { "ContentType", avatar.ContentType }
                 }
@@ -112,24 +118,24 @@ public class UserService : IUserService
         await UpdateAsync(user);
     }
 
-    public async Task<(byte[] Data, string ContentType)?> GetAvatarAsync(string userId)
+    public async Task<(byte[] Data, string ContentType)?> GetAvatarAsync(Guid userId)
     {
-        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-        if (user == null || user.AvatarFileId == null)
+        var user = await GetByIdAsync(userId);
+        if (user?.AvatarFileId == null)
             return null;
 
-        var objectId = MongoDB.Bson.ObjectId.Parse(user.AvatarFileId);
+        var objectId = ObjectId.Parse(user.AvatarFileId);
+        var data = await _gridFs.DownloadAsBytesAsync(objectId);
 
-        var bytes = await _gridFS.DownloadAsBytesAsync(objectId);
-        var fileInfo = await _gridFS
+        var info = await _gridFs
             .Find(Builders<GridFSFileInfo>.Filter.Eq("_id", objectId))
             .FirstOrDefaultAsync();
 
         var contentType =
-            fileInfo?.Metadata?["ContentType"]?.AsString
+            info?.Metadata?["ContentType"]?.AsString
             ?? "application/octet-stream";
 
-        return (bytes, contentType);
+        return (data, contentType);
     }
 
 }

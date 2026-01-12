@@ -37,6 +37,7 @@ public class AuthController : ControllerBase
 
         var user = new User
         {
+            Id = Guid.NewGuid(),
             Username = dto.Username,
             Email = dto.Email,
             PhoneNumber = dto.PhoneNumber,
@@ -54,11 +55,11 @@ public class AuthController : ControllerBase
             user.Email,
             "Confirm your MussicApp account",
             $"""
-        <h2>Email confirmation</h2>
-        <p>Your confirmation code:</p>
-        <h1>{code}</h1>
-        <p>This code expires in 10 minutes.</p>
-        """
+            <h2>Email confirmation</h2>
+            <p>Your confirmation code:</p>
+            <h1>{code}</h1>
+            <p>This code expires in 10 minutes.</p>
+            """
         );
 
         return Ok("Confirmation code sent to email");
@@ -83,13 +84,7 @@ public class AuthController : ControllerBase
 
         var token = _jwt.GenerateToken(user);
 
-        return Ok(new
-        {
-            token,
-            user.Id,
-            user.Username,
-            user.Email
-        });
+        return Ok(new AuthResponse(user, token));
     }
 
     [HttpPost("forgot-password")]
@@ -146,13 +141,7 @@ public class AuthController : ControllerBase
 
         var token = _jwt.GenerateToken(user);
 
-        return Ok(new
-        {
-            token,
-            user.Id,
-            user.Username,
-            user.Email
-        });
+        return Ok(new AuthResponse(user, token));
     }
 
     [HttpPost("google")]
@@ -173,8 +162,9 @@ public class AuthController : ControllerBase
 
         if (user == null)
         {
-            var baseUsername = payload.Name?.Replace(" ", "").ToLower()
-                               ?? payload.Email.Split('@')[0];
+            var baseUsername =
+                payload.Name?.Replace(" ", "").ToLower()
+                ?? payload.Email.Split('@')[0];
 
             var username = baseUsername;
             var i = 1;
@@ -184,6 +174,7 @@ public class AuthController : ControllerBase
 
             user = new User
             {
+                Id = Guid.NewGuid(),
                 GoogleId = payload.Subject,
                 Email = payload.Email,
                 Username = username,
@@ -196,13 +187,7 @@ public class AuthController : ControllerBase
 
         var token = _jwt.GenerateToken(user);
 
-        return Ok(new
-        {
-            token,
-            user.Id,
-            user.Username,
-            user.Email
-        });
+        return Ok(new AuthResponse(user, token));
     }
 
 
@@ -210,10 +195,14 @@ public class AuthController : ControllerBase
     [HttpPost("like")]
     public async Task<IActionResult> LikeTrack(LikeTrackDto dto)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null) return Unauthorized();
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
-        await _users.AddLikeAsync(userId, dto.TrackId);
+        await _users.AddLikeAsync(
+            userId,
+            Guid.Parse(dto.TrackId));
+
         return Ok("Track liked");
     }
 
@@ -222,32 +211,41 @@ public class AuthController : ControllerBase
     [HttpPost("unlike")]
     public async Task<IActionResult> UnlikeTrack(LikeTrackDto dto)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null) return Unauthorized();
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
-        await _users.RemoveLikeAsync(userId, dto.TrackId);
+        await _users.RemoveLikeAsync(
+            userId,
+            Guid.Parse(dto.TrackId));
+
         return Ok("Track unliked");
     }
+
 
     [Authorize]
     [HttpGet("liked-tracks")]
     public async Task<IActionResult> GetLikedTracks()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null) return Unauthorized();
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
-        var likedTrackIds = await _users.GetLikedTrackIdsAsync(userId);
-        return Ok(likedTrackIds);
+        var ids = await _users.GetLikedTrackIdsAsync(userId);
+        return Ok(ids);
     }
+
 
 
     [Authorize]
     [HttpPost("change-avatar")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> ChangeAvatar([FromForm] IFormFile avatar)
+    public async Task<IActionResult> ChangeAvatar(
+    [FromForm] IFormFile avatar)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null) return Unauthorized();
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
         if (avatar == null || avatar.Length == 0)
             return BadRequest("Avatar file is required");
@@ -256,14 +254,18 @@ public class AuthController : ControllerBase
         return Ok("Avatar updated");
     }
 
-    [HttpGet("avatar/{userId}")]
-    public async Task<IActionResult> GetAvatar(string userId)
+
+    [HttpGet("avatar/{userId:guid}")]
+    public async Task<IActionResult> GetAvatar(Guid userId)
     {
         var avatar = await _users.GetAvatarAsync(userId);
         if (avatar == null) return NotFound();
 
-        return File(avatar.Value.Data, avatar.Value.ContentType);
+        return File(
+            avatar.Value.Data,
+            avatar.Value.ContentType);
     }
+
 }
 
 public record RegisterDto(
@@ -292,4 +294,14 @@ public record ResetPasswordDto(
 public class GoogleAuthDto
 {
     public string IdToken { get; set; } = string.Empty;
+}
+
+public record AuthResponse(
+    Guid Id,
+    string Username,
+    string Email,
+    string Token)
+{
+    public AuthResponse(User user, string token)
+        : this(user.Id, user.Username, user.Email, token) { }
 }

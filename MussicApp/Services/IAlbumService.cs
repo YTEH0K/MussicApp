@@ -3,13 +3,13 @@ using MussicApp.Models;
 
 public interface IAlbumService
 {
-    Task<Album> CreateAsync(string title, string username,string userId, IFormFile? cover = null);
-    Task<bool> AddCoverAsync(string albumId, IFormFile cover);
-    Task<bool> AddTrackAsync(string albumId, string trackId);
-    Task<Album?> GetByIdAsync(string albumId);
-    Task<IEnumerable<Album>> GetByOwnerAsync(string ownerId);
+    Task<Album> CreateAsync(string title, string artist,Guid OwnerId, IFormFile? cover = null);
+    Task<bool> AddCoverAsync(Guid albumId, IFormFile cover);
+    Task<bool> AddTrackAsync(Guid albumId, Guid trackId);
+    Task<Album?> GetByIdAsync(Guid albumId);
+    Task<IEnumerable<Album>> GetByOwnerAsync(Guid ownerId);
 
-    Task<(byte[]? Data, string? ContentType)> GetCoverAsync(string albumId);
-    Task<IEnumerable<Track>> GetTracksAsync(string albumId);
+    Task<(byte[]? Data, string? ContentType)> GetCoverAsync(Guid albumId);
+    Task<IEnumerable<Track>> GetTracksAsync(Guid albumId);
     Task<IEnumerable<Album>> GetAllAsync();
 }

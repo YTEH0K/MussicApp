@@ -5,19 +5,18 @@ namespace MussicApp.Models;
 
 public class Album
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = null!;
+    public Guid Id { get; set; }
 
     public string Title { get; set; } = string.Empty;
     public string Artist { get; set; } = string.Empty;
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string OwnerId { get; set; }
-
-    [BsonRepresentation(BsonType.ObjectId)]
-    public List<string> TrackIds { get; set; } = new();
+    public Guid OwnerId { get; set; }
+    public User Owner { get; set; } = null!;
 
     public string? CoverFileId { get; set; }
+
+    public ICollection<AlbumTrack> AlbumTracks { get; set; }
+        = new List<AlbumTrack>();
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
