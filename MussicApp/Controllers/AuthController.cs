@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
 
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            //Id = Guid.NewGuid(),
             Username = dto.Username,
             Email = dto.Email,
             PhoneNumber = dto.PhoneNumber,

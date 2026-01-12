@@ -43,10 +43,30 @@ public class UserService : IUserService
 
     public async Task CreateAsync(User user)
     {
-        user.Id = Guid.NewGuid();
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        using var tx = await _db.Database.BeginTransactionAsync();
+
+        try
+        {
+            user.Id = Guid.NewGuid();
+
+            _db.Users.Add(user);
+
+            _db.Artists.Add(new Artist
+            {
+                Id = user.Id,
+                Name = user.Username
+            });
+
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
     }
+
 
     public async Task UpdateAsync(User user)
     {
