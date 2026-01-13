@@ -11,17 +11,16 @@ namespace MussicApp.Services;
 public class TrackService : ITrackService
 {
     private readonly AppDbContext _db;
-    private readonly GridFSBucket _gridFS;
+    private readonly IFileStorageService _gridFS;
 
     public TrackService(
         AppDbContext db,
         IMongoClient mongo,
+        IFileStorageService gridFS,
         IOptions<MongoDbSettings> options)
     {
         _db = db;
-        _gridFS = new GridFSBucket(
-            mongo.GetDatabase(options.Value.DatabaseName)
-        );
+        _gridFS = gridFS;
     }
 
     public async Task<Track> CreateAsync(
@@ -36,12 +35,12 @@ public class TrackService : ITrackService
             throw new ArgumentException("Audio file is required");
 
         if (cover == null || cover.Length == 0)
-            throw new ArgumentException("Cover file is required");
+            throw new ArgumentException("Cover image is required");
 
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title is required");
 
-        // ✅ ВАЖЛИВО: перевірка існування артиста
+        // 🔒 Перевірка артиста (FK safety)
         var artistExists = await _db.Artists.AnyAsync(a => a.Id == artistId);
         if (!artistExists)
             throw new InvalidOperationException(
@@ -53,41 +52,31 @@ public class TrackService : ITrackService
 
         try
         {
-            using (var audioStream = audio.OpenReadStream())
+            // 🎵 upload audio
+            await using (var audioStream = audio.OpenReadStream())
             {
-                audioId = await _gridFS.UploadFromStreamAsync(
-                    audio.FileName,
+                audioId = await _gridFS.UploadAsync(
                     audioStream,
-                    new GridFSUploadOptions
-                    {
-                        Metadata = new BsonDocument
-                        {
-                        { "ContentType", audio.ContentType },
-                        { "Type", "audio" }
-                        }
-                    });
+                    audio.FileName,
+                    audio.ContentType
+                );
             }
 
-            using (var coverStream = cover.OpenReadStream())
+            // 🖼 upload cover
+            await using (var coverStream = cover.OpenReadStream())
             {
-                coverId = await _gridFS.UploadFromStreamAsync(
-                    cover.FileName,
+                coverId = await _gridFS.UploadAsync(
                     coverStream,
-                    new GridFSUploadOptions
-                    {
-                        Metadata = new BsonDocument
-                        {
-                        { "ContentType", cover.ContentType },
-                        { "Type", "cover" }
-                        }
-                    });
+                    cover.FileName,
+                    cover.ContentType
+                );
             }
 
             var track = new Track
             {
                 Id = Guid.NewGuid(),
                 Title = title,
-                ArtistId = artistId,   // 🔑 FK гарантовано валідний
+                ArtistId = artistId,
                 AlbumId = albumId,
                 OwnerId = ownerId,
                 FileId = audioId.ToString(),
@@ -111,6 +100,7 @@ public class TrackService : ITrackService
             throw;
         }
     }
+
 
 
 
