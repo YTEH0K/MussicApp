@@ -25,12 +25,12 @@ public class TrackService : ITrackService
     }
 
     public async Task<Track> CreateAsync(
-        IFormFile audio,
-        IFormFile cover,
-        string title,
-        Guid artistId,
-        Guid? albumId,
-        Guid ownerId)
+    IFormFile audio,
+    IFormFile cover,
+    string title,
+    Guid artistId,
+    Guid? albumId,
+    Guid ownerId)
     {
         if (audio == null || audio.Length == 0)
             throw new ArgumentException("Audio file is required");
@@ -41,12 +41,18 @@ public class TrackService : ITrackService
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title is required");
 
+        // ✅ ВАЖЛИВО: перевірка існування артиста
+        var artistExists = await _db.Artists.AnyAsync(a => a.Id == artistId);
+        if (!artistExists)
+            throw new InvalidOperationException(
+                $"Artist with id {artistId} does not exist"
+            );
+
         ObjectId audioId = ObjectId.Empty;
         ObjectId coverId = ObjectId.Empty;
 
         try
         {
-            // ===== Upload audio =====
             using (var audioStream = audio.OpenReadStream())
             {
                 audioId = await _gridFS.UploadFromStreamAsync(
@@ -62,7 +68,6 @@ public class TrackService : ITrackService
                     });
             }
 
-            // ===== Upload cover =====
             using (var coverStream = cover.OpenReadStream())
             {
                 coverId = await _gridFS.UploadFromStreamAsync(
@@ -82,7 +87,7 @@ public class TrackService : ITrackService
             {
                 Id = Guid.NewGuid(),
                 Title = title,
-                ArtistId = artistId,
+                ArtistId = artistId,   // 🔑 FK гарантовано валідний
                 AlbumId = albumId,
                 OwnerId = ownerId,
                 FileId = audioId.ToString(),
@@ -97,7 +102,6 @@ public class TrackService : ITrackService
         }
         catch
         {
-
             if (audioId != ObjectId.Empty)
                 await _gridFS.DeleteAsync(audioId);
 
@@ -107,6 +111,7 @@ public class TrackService : ITrackService
             throw;
         }
     }
+
 
 
 

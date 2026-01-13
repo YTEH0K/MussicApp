@@ -49,13 +49,14 @@ public class UserService : IUserService
         {
             user.Id = Guid.NewGuid();
 
-            _db.Users.Add(user);
-
-            _db.Artists.Add(new Artist
+            var artist = new Artist
             {
-                Id = user.Id,
+                Id = user.Id,          // 🔑 той самий Id
                 Name = user.Username
-            });
+            };
+
+            _db.Users.Add(user);
+            _db.Artists.Add(artist);
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
@@ -66,6 +67,7 @@ public class UserService : IUserService
             throw;
         }
     }
+
 
 
     public async Task UpdateAsync(User user)
