@@ -51,17 +51,17 @@ public class TracksController : ControllerBase
         if (string.IsNullOrWhiteSpace(title))
             return BadRequest("Title is required");
 
-        var ownerId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
+        var userId = Guid.Parse(
+    User.FindFirstValue(ClaimTypes.NameIdentifier)!
+);
 
         var track = await _tracks.CreateAsync(
             file,
             cover,
             title,
-            artistId,
+            userId,    // ✅ artistId = userId
             albumId,
-            ownerId
+            userId     // ✅ ownerId
         );
 
         return CreatedAtAction(
