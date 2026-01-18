@@ -39,6 +39,7 @@ public class TracksController : ControllerBase
         [FromForm] IFormFile file,
         [FromForm] IFormFile cover,
         [FromForm] string title,
+        [FromForm] string lyrics,
         [FromForm] Guid artistId,
         [FromForm] Guid? albumId)
     {
@@ -59,15 +60,45 @@ public class TracksController : ControllerBase
             file,
             cover,
             title,
-            userId,    // ✅ artistId = userId
+            lyrics,
+            userId,
             albumId,
-            userId     // ✅ ownerId
+            userId
         );
 
         return CreatedAtAction(
             nameof(Get),
             new { id = track.Id },
             track);
+    }
+
+    [Authorize]
+    [HttpPut("lyric/{id:guid}")]
+    public async Task<IActionResult> AddLyrics(Guid id, [FromBody] LyricsDto dto)
+    {
+        var ownerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        var track = await _tracks.GetByIdAsync(id);
+        if (track == null) return NotFound();
+
+        if (track.OwnerId != ownerId) return Forbid();
+
+        track.Lyrics = dto.Lyrics;
+        await _tracks.UpdateAsync(track);
+
+        return Ok(track);
+    }
+
+    [Authorize]
+    [HttpGet("lyric/{id:guid}")]
+    public async Task<IActionResult> GetLyrics(Guid id)
+    {
+        var track = await _tracks.GetByIdAsync(id);
+        if (track == null)
+            return NotFound();
+        if (string.IsNullOrWhiteSpace(track.Lyrics))
+            return NotFound("Lyrics not found");
+        return Ok(track.Lyrics);
     }
 
     [Authorize]
@@ -150,3 +181,11 @@ public class TracksController : ControllerBase
 
 
 }
+
+public class LyricsDto
+{
+    public string Lyrics { get; set; } = null!;
+}
+
+
+//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjM4M2VhMWNlLWIyMWItNDdlMy1iY2FkLWEwMzQ1NjQ4ZDk2ZiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhc2QiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJuYXVtZXRzMjAwN0BtYWlsLmNvbSIsInByb3ZpZGVyIjoiTG9jYWwiLCJleHAiOjE3Njg3MDEyNTEsImlzcyI6Ik11c3NpY0FwcCIsImF1ZCI6Ik11c3NpY0FwcENsaWVudCJ9.lJwR - Np3bkGNU7kKUPSyWdc4I1o6uXPE5dxzs_fh5Nk

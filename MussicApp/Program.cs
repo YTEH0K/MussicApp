@@ -60,6 +60,7 @@ builder.Services.AddScoped<IFileStorageService, GridFsStorageService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IIconService, IconService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
