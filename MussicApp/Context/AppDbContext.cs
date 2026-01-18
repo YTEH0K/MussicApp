@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<AlbumTrack> AlbumTracks => Set<AlbumTrack>();
     public DbSet<UserLikedTrack> UserLikedTracks => Set<UserLikedTrack>();
     public DbSet<Artist> Artists { get; set; } = null!;
+    public DbSet<Comments> Comments { get; set; } = null!;
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -77,6 +78,9 @@ public class AppDbContext : DbContext
                 v => TimeSpan.FromTicks(v)
             );
 
+
+
+
         // ================================
         // Album
         // ================================
@@ -84,5 +88,17 @@ public class AppDbContext : DbContext
             .HasMany(a => a.AlbumTracks)
             .WithOne(at => at.Album)
             .HasForeignKey(at => at.AlbumId);
+
+
+        // ================================
+        // Comments
+        // ================================
+
+        modelBuilder.Entity<Comments>()
+            .HasOne(c => c.User)
+            .WithMany(u => u.Comments)
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

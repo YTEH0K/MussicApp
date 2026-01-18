@@ -7,6 +7,7 @@ public interface ITrackService
        IFormFile file,
        IFormFile cover,
        string title,
+       string lyrics,
        Guid artistId,
        Guid? albumId,
        Guid ownerId);
@@ -16,6 +17,7 @@ public interface ITrackService
     Task<Track?> GetByIdAsync(Guid id);
     Task DeleteAsync(Track track);
     Task<IEnumerable<Track>> GetByOwnerIdAsync(Guid ownerId);
-
     Task<IEnumerable<Artist>> GetAllArtistsAsync();
+    Task<Track> UpdateAsync(Track track);
+    //Task<Track?> GetLyricById (Guid id);
 }

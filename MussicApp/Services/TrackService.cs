@@ -27,6 +27,7 @@ public class TrackService : ITrackService
     IFormFile audio,
     IFormFile cover,
     string title,
+    string lyrics,
     Guid artistId,
     Guid? albumId,
     Guid ownerId)
@@ -77,6 +78,7 @@ public class TrackService : ITrackService
                 Id = Guid.NewGuid(),
                 Title = title,
                 ArtistId = artistId,
+                Lyrics = lyrics,
                 AlbumId = albumId,
                 OwnerId = ownerId,
                 FileId = audioId.ToString(),
@@ -101,9 +103,12 @@ public class TrackService : ITrackService
         }
     }
 
-
-
-
+    public async Task<Track> UpdateAsync(Track track)
+    {
+        _db.Tracks.Update(track);
+        await _db.SaveChangesAsync();
+        return track;
+    }
 
     public async Task DeleteAsync(Track track)
     {

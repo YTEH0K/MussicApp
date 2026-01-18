@@ -28,6 +28,9 @@ public class User
     public ICollection<UserLikedTrack> LikedTracks { get; set; }
         = new List<UserLikedTrack>();
 
+    public ICollection<Comments> Comments { get; set; }
+        = new List<Comments>();
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
