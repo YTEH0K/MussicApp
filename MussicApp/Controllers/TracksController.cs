@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
+using MussicApp.Models;
 using MussicApp.Services;
 using System.Security.Claims;
 
@@ -19,10 +20,30 @@ public class TracksController : ControllerBase
         _files = files;
     }
 
+    private static TrackDto ToDto(Track track)
+    {
+        return new TrackDto
+        {
+            Id = track.Id,
+            Title = track.Title,
+            Lyrics = track.Lyrics,
+            ArtistId = track.ArtistId,
+            ArtistName = track.Artist?.Name,
+            OwnerId = track.OwnerId,
+            AlbumId = track.AlbumId,
+            FileId = track.FileId,
+            CoverFileId = track.CoverFileId,
+            Duration = track.Duration,
+            UploadedAt = track.UploadedAt,
+            Status = track.Status.ToString()
+        };
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        return Ok(await _tracks.GetAllAsync());
+        var tracks = await _tracks.GetAllAsync();
+        return Ok(tracks.Select(ToDto));
     }
 
     [HttpGet("{id:guid}")]
@@ -30,7 +51,8 @@ public class TracksController : ControllerBase
     {
         var track = await _tracks.GetByIdAsync(id);
         if (track == null) return NotFound();
-        return Ok(track);
+
+        return Ok(ToDto(track));
     }
 
     [Authorize]
@@ -53,15 +75,15 @@ public class TracksController : ControllerBase
             return BadRequest("Title is required");
 
         var userId = Guid.Parse(
-    User.FindFirstValue(ClaimTypes.NameIdentifier)!
-);
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
         var track = await _tracks.CreateAsync(
             file,
             cover,
             title,
             lyrics,
-            userId,
+            artistId,
             albumId,
             userId
         );
@@ -69,52 +91,53 @@ public class TracksController : ControllerBase
         return CreatedAtAction(
             nameof(Get),
             new { id = track.Id },
-            track);
+            ToDto(track)
+        );
     }
 
     [Authorize]
     [HttpPut("lyric/{id:guid}")]
-    public async Task<IActionResult> AddLyrics(Guid id, [FromBody] LyricsDto dto)
+    public async Task<IActionResult> UpdateLyrics(
+        Guid id,
+        [FromBody] LyricsDto dto)
     {
-        var ownerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
 
         var track = await _tracks.GetByIdAsync(id);
         if (track == null) return NotFound();
-
-        if (track.OwnerId != ownerId) return Forbid();
+        if (track.OwnerId != userId) return Forbid();
 
         track.Lyrics = dto.Lyrics;
         await _tracks.UpdateAsync(track);
 
-        return Ok(track);
+        return Ok(ToDto(track));
     }
 
-    [Authorize]
     [HttpGet("lyric/{id:guid}")]
     public async Task<IActionResult> GetLyrics(Guid id)
     {
         var track = await _tracks.GetByIdAsync(id);
-        if (track == null)
-            return NotFound();
+        if (track == null) return NotFound();
+
         if (string.IsNullOrWhiteSpace(track.Lyrics))
             return NotFound("Lyrics not found");
-        return Ok(track.Lyrics);
+
+        return Ok(new { lyrics = track.Lyrics });
     }
 
     [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var ownerId = Guid.Parse(
+        var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
         var track = await _tracks.GetByIdAsync(id);
-        if (track == null)
-            return NotFound();
-
-        if (track.OwnerId != ownerId)
-            return Forbid();
+        if (track == null) return NotFound();
+        if (track.OwnerId != userId) return Forbid();
 
         await _tracks.DeleteAsync(track);
         return NoContent();
@@ -124,13 +147,13 @@ public class TracksController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> MyTracks()
     {
-        var ownerId = Guid.Parse(
+        var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-        return Ok(await _tracks.GetByOwnerIdAsync(ownerId));
+        var tracks = await _tracks.GetByOwnerIdAsync(userId);
+        return Ok(tracks.Select(ToDto));
     }
-
 
     [HttpGet("stream/{id:guid}")]
     public async Task<IActionResult> Stream(Guid id)
@@ -140,24 +163,26 @@ public class TracksController : ControllerBase
 
         var (stream, contentType) =
             await _files.DownloadAsync(
-                ObjectId.Parse(track.FileId));
+                ObjectId.Parse(track.FileId)
+            );
 
         return File(
             stream,
             contentType ?? "audio/mpeg",
-            enableRangeProcessing: true);
+            enableRangeProcessing: true
+        );
     }
 
     [HttpGet("{id:guid}/cover")]
     public async Task<IActionResult> GetCover(Guid id)
     {
         var track = await _tracks.GetByIdAsync(id);
-        if (track?.CoverFileId == null)
-            return NotFound();
+        if (track?.CoverFileId == null) return NotFound();
 
         var (stream, contentType) =
             await _files.DownloadAsync(
-                ObjectId.Parse(track.CoverFileId));
+                ObjectId.Parse(track.CoverFileId)
+            );
 
         return File(stream, contentType ?? "image/jpeg");
     }
@@ -166,20 +191,47 @@ public class TracksController : ControllerBase
     public async Task<IActionResult> GetArtists()
     {
         var artists = await _tracks.GetAllArtistsAsync();
-        return Ok(artists);
+
+        return Ok(artists.Select(a => new ArtistDto
+        {
+            Id = a.Id,
+            Name = a.Name
+        }));
     }
 
     [HttpGet("{id:guid}/artist")]
     public async Task<IActionResult> GetArtist(Guid id)
     {
         var track = await _tracks.GetByIdAsync(id);
-        if (track == null) return NotFound();
+        if (track?.Artist == null) return NotFound();
 
-        var artist = track.Artist;
-        return Ok(artist);
+        return Ok(new ArtistDto
+        {
+            Id = track.Artist.Id,
+            Name = track.Artist.Name
+        });
     }
+}
 
+public class TrackDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = null!;
+    public string? Lyrics { get; set; }
 
+    public Guid ArtistId { get; set; }
+    public string? ArtistName { get; set; }
+
+    public Guid OwnerId { get; set; }
+    public Guid? AlbumId { get; set; }
+
+    public string FileId { get; set; } = null!;
+    public string? CoverFileId { get; set; }
+
+    public TimeSpan Duration { get; set; }
+    public DateTime UploadedAt { get; set; }
+
+    public string Status { get; set; } = null!;
 }
 
 public class LyricsDto
@@ -187,5 +239,8 @@ public class LyricsDto
     public string Lyrics { get; set; } = null!;
 }
 
-
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjM4M2VhMWNlLWIyMWItNDdlMy1iY2FkLWEwMzQ1NjQ4ZDk2ZiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhc2QiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJuYXVtZXRzMjAwN0BtYWlsLmNvbSIsInByb3ZpZGVyIjoiTG9jYWwiLCJleHAiOjE3Njg3MDEyNTEsImlzcyI6Ik11c3NpY0FwcCIsImF1ZCI6Ik11c3NpY0FwcENsaWVudCJ9.lJwR - Np3bkGNU7kKUPSyWdc4I1o6uXPE5dxzs_fh5Nk
+public class ArtistDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = null!;
+}
