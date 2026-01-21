@@ -61,6 +61,8 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IIconService, IconService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IAdminTrackService, AdminTrackService>();
+
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>

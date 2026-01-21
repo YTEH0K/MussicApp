@@ -31,6 +31,8 @@ public class User
     public ICollection<Comments> Comments { get; set; }
         = new List<Comments>();
 
+    public UserRole Role { get; set; } = UserRole.User;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -39,4 +41,10 @@ public enum AuthProvider
 {
     Local,
     Google
+}
+
+public enum UserRole
+{
+    User = 0,
+    Admin = 1
 }

@@ -128,8 +128,12 @@ public class TrackService : ITrackService
 
     public async Task<IEnumerable<Track>> GetAllAsync()
     {
-        return await _db.Tracks.ToListAsync();
+        return await _db.Tracks
+            .Where(t => t.Status == TrackStatus.Approved)
+            .OrderByDescending(t => t.UploadedAt)
+            .ToListAsync();
     }
+
 
     public async Task<Track?> GetByIdAsync(Guid id)
     {

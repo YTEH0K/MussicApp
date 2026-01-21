@@ -25,7 +25,15 @@ public class Track
     public TimeSpan Duration { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
+    public TrackStatus Status { get; set; } = TrackStatus.Pending;
+
     public ICollection<UserLikedTrack> LikedByUsers { get; set; }
         = new List<UserLikedTrack>();
 }
 
+public enum TrackStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2
+}
