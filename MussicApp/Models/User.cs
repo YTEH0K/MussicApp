@@ -46,5 +46,6 @@ public enum AuthProvider
 public enum UserRole
 {
     User = 0,
-    Admin = 1
+    Admin = 1,
+    Artist = 2
 }
