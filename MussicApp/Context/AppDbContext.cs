@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<UserLikedTrack> UserLikedTracks => Set<UserLikedTrack>();
     public DbSet<Artist> Artists { get; set; } = null!;
     public DbSet<Comments> Comments { get; set; } = null!;
+    public DbSet<AuthorRequest> AuthorRequests => Set<AuthorRequest>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

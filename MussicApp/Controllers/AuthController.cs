@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using MussicApp.Models;
 using MussicApp.Services;
 using System.Security.Claims;
+using MussicApp.Data;
+using Microsoft.EntityFrameworkCore;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -14,12 +16,14 @@ public class AuthController : ControllerBase
     private readonly IUserService _users;
     private readonly JwtService _jwt;
     private readonly IEmailService _email;
+    private readonly AppDbContext _db;
 
-    public AuthController(IUserService users, JwtService jwt, IEmailService email)
+    public AuthController(IUserService users, JwtService jwt, IEmailService email, AppDbContext db)
     {
         _users = users;
         _jwt = jwt;
         _email = email;
+        _db = db;
     }
 
     [HttpPost("register")]
@@ -266,6 +270,37 @@ public class AuthController : ControllerBase
             avatar.Value.ContentType);
     }
 
+    [Authorize]
+    [HttpPost("become-author")]
+    public async Task<IActionResult> BecomeAuthor(AuthorRequestDto dto)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var user = await _users.GetByIdAsync(userId);
+        if (user == null) return Unauthorized();
+
+        var exists = await _db.AuthorRequests
+            .AnyAsync(r => r.UserId == userId &&
+                           r.Status == AuthorRequestStatus.Pending);
+
+        if (exists)
+            return BadRequest("Author request already exists");
+
+        var request = new AuthorRequest
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RequestedUsername = dto.Username
+        };
+
+        _db.AuthorRequests.Add(request);
+        await _db.SaveChangesAsync();
+
+        return Ok("Author request sent");
+    }
+
 }
 
 public record RegisterDto(
@@ -305,3 +340,5 @@ public record AuthResponse(
     public AuthResponse(User user, string token)
         : this(user.Id, user.Username, user.Email, token) { }
 }
+
+public record AuthorRequestDto(string Username);
