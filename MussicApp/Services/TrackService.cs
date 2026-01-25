@@ -30,7 +30,8 @@ public class TrackService : ITrackService
     string lyrics,
     Guid artistId,
     Guid? albumId,
-    Guid ownerId)
+    Guid ownerId,
+    IEnumerable<Guid>? genreIds = null)
     {
         if (audio == null || audio.Length == 0)
             throw new ArgumentException("Audio file is required");
@@ -83,8 +84,15 @@ public class TrackService : ITrackService
                 OwnerId = ownerId,
                 FileId = audioId.ToString(),
                 CoverFileId = coverId.ToString(),
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                TrackGenres = (genreIds ?? Enumerable.Empty<Guid>())
+                    .Distinct()
+                    .Select(gid => new TrackGenre { TrackId = Guid.Empty, GenreId = gid })
+                    .ToList()
             };
+
+            foreach (var tg in track.TrackGenres)
+                tg.TrackId = track.Id;
 
             _db.Tracks.Add(track);
             await _db.SaveChangesAsync();
@@ -123,23 +131,34 @@ public class TrackService : ITrackService
 
     public async Task<IEnumerable<Track>> GetByOwnerIdAsync(Guid ownerId)
     {
-        return await _db.Tracks.Where(t => t.OwnerId == ownerId).ToListAsync();
+        return await _db.Tracks
+            .Where(t => t.OwnerId == ownerId)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<Track>> GetAllAsync()
     {
         return await _db.Tracks
-            .Where(t => t.Status == TrackStatus.Approved)
-            .OrderByDescending(t => t.UploadedAt)
-            .ToListAsync();
+           .Where(t => t.Status == TrackStatus.Approved)
+           .Include(t => t.Artist)
+           .Include(t => t.Album)
+           .Include(t => t.TrackGenres)
+               .ThenInclude(tg => tg.Genre)
+           .OrderByDescending(t => t.UploadedAt)
+           .ToListAsync();
     }
 
 
     public async Task<Track?> GetByIdAsync(Guid id)
     {
         return await _db.Tracks
-           .Include(t => t.Album)
-           .FirstOrDefaultAsync(t => t.Id == id);
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .FirstOrDefaultAsync(t => t.Id == id);
     }
 
 
@@ -152,5 +171,25 @@ public class TrackService : ITrackService
     {
         return await _db.Artists.FindAsync(id);
     }
+
+    public async Task<IEnumerable<Track>> GetByGenreSlugAsync(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            return Enumerable.Empty<Track>();
+
+        slug = slug.Trim().ToLowerInvariant();
+
+        return await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved
+                        && t.TrackGenres.Any(tg => tg.Genre != null
+                                                   && tg.Genre.Slug.ToLower() == slug))
+            .OrderByDescending(t => t.UploadedAt)
+            .ToListAsync();
+    }
+
 
 }

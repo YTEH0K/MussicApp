@@ -278,8 +278,11 @@ public class AuthController : ControllerBase
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-        var user = await _users.GetByIdAsync(userId);
+        var user = await _db.Users.FindAsync(userId);
         if (user == null) return Unauthorized();
+
+        if (user.Role == UserRole.Artist)
+            return BadRequest("User is already an artist");
 
         var exists = await _db.AuthorRequests
             .AnyAsync(r => r.UserId == userId &&
@@ -288,11 +291,36 @@ public class AuthController : ControllerBase
         if (exists)
             return BadRequest("Author request already exists");
 
+        string requestedUsername;
+
+        if (string.IsNullOrWhiteSpace(dto.Username))
+        {
+            requestedUsername = user.Username;
+        }
+        else
+        {
+            requestedUsername = dto.Username.Trim();
+
+            var usernameExists = await _db.Users
+                .AnyAsync(u =>
+                    u.Username == requestedUsername &&
+                    u.Id != userId);
+
+            if (usernameExists)
+                return BadRequest("Username already taken");
+
+            var artistExists = await _db.Artists
+                .AnyAsync(a => a.Name == requestedUsername);
+
+            if (artistExists)
+                return BadRequest("Artist name already exists");
+        }
+
         var request = new AuthorRequest
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            RequestedUsername = dto.Username
+            RequestedUsername = requestedUsername
         };
 
         _db.AuthorRequests.Add(request);
@@ -300,7 +328,6 @@ public class AuthController : ControllerBase
 
         return Ok("Author request sent");
     }
-
 }
 
 public record RegisterDto(
