@@ -8,7 +8,7 @@ public class Track
     public Guid Id { get; set; }
 
     public string Title { get; set; } = string.Empty;
-    
+    public ICollection<TrackGenre> TrackGenres { get; set; } = [];
     public string? Lyrics { get; set; } = string.Empty;
     public Guid ArtistId { get; set; }
     public Artist? Artist { get; set; }

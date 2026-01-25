@@ -101,5 +101,26 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // ================================
+        // Genres
+        // ================================
+
+        modelBuilder.Entity<TrackGenre>()
+        .HasKey(x => new { x.TrackId, x.GenreId });
+
+        modelBuilder.Entity<TrackGenre>()
+            .HasOne(x => x.Track)
+            .WithMany(t => t.TrackGenres)
+            .HasForeignKey(x => x.TrackId);
+
+        modelBuilder.Entity<TrackGenre>()
+            .HasOne(x => x.Genre)
+            .WithMany(g => g.TrackGenres)
+            .HasForeignKey(x => x.GenreId);
+
+        modelBuilder.Entity<Genre>()
+            .HasIndex(g => g.Slug)
+            .IsUnique();
+
     }
 }

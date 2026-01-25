@@ -35,7 +35,11 @@ public class TracksController : ControllerBase
             CoverFileId = track.CoverFileId,
             Duration = track.Duration,
             UploadedAt = track.UploadedAt,
-            Status = track.Status.ToString()
+            Status = track.Status.ToString(),
+            Genres = track.TrackGenres?
+                .Select(tg => tg.Genre?.Name)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList()
         };
     }
 
@@ -58,13 +62,18 @@ public class TracksController : ControllerBase
     [Authorize]
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
-        [FromForm] IFormFile file,
-        [FromForm] IFormFile cover,
-        [FromForm] string title,
-        [FromForm] string lyrics,
-        [FromForm] Guid artistId,
-        [FromForm] Guid? albumId)
+    [FromForm] IFormFile file,
+    [FromForm] IFormFile cover,
+    [FromForm] string title,
+    [FromForm] string lyrics,
+    [FromForm] Guid artistId,
+    [FromForm] Guid? albumId,
+    [FromForm] List<Guid> genreIds)
     {
+
+        if (genreIds == null || genreIds.Count == 0)
+            return BadRequest("At least one genreId is required.");
+
         if (file == null || file.Length == 0)
             return BadRequest("Audio file is required");
 
@@ -74,26 +83,63 @@ public class TracksController : ControllerBase
         if (string.IsNullOrWhiteSpace(title))
             return BadRequest("Title is required");
 
+        // --- parse genreIds from form ---
+     
+        if (Request.Form.TryGetValue("genreIds", out var gvals))
+        {
+            foreach (var val in gvals)
+            {
+                var parts = val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var p in parts)
+                {
+                    if (Guid.TryParse(p, out var gid))
+                        genreIds.Add(gid);
+                }
+            }
+        }
+
+        if (genreIds.Count == 0)
+            return BadRequest("At least one genreId is required. Send form field 'genreIds' (comma-separated or multiple values).");
+
         var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-        var track = await _tracks.CreateAsync(
-            file,
-            cover,
-            title,
-            lyrics,
-            artistId,
-            albumId,
-            userId
-        );
+        try
+        {
+            // NOTE: ITrackService.CreateAsync signature was extended with genreIds
+            var track = await _tracks.CreateAsync(
+                file,
+                cover,
+                title,
+                lyrics,
+                artistId,
+                albumId,
+                userId,
+                genreIds
+            );
 
-        return CreatedAtAction(
-            nameof(Get),
-            new { id = track.Id },
-            ToDto(track)
-        );
+            return CreatedAtAction(
+                nameof(Get),
+                new { id = track.Id },
+                ToDto(track)
+            );
+        }
+        catch (InvalidOperationException ex)
+        {
+            // validation error from service (e.g. missing artist/genre)
+            return BadRequest(ex.Message);
+        }
     }
+
+    [HttpGet("genre/slug/{slug}")]
+    public async Task<IActionResult> GetByGenreSlug(string slug)
+    {
+        var tracks = await _tracks.GetByGenreSlugAsync(slug);
+        if (!tracks.Any()) return NotFound();
+        return Ok(tracks.Select(ToDto));
+    }
+
 
     [Authorize]
     [HttpPut("lyric/{id:guid}")]
@@ -232,6 +278,8 @@ public class TrackDto
     public DateTime UploadedAt { get; set; }
 
     public string Status { get; set; } = null!;
+
+    public IEnumerable<string>? Genres { get; set; }
 }
 
 public class LyricsDto
