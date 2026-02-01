@@ -20,6 +20,10 @@ public class AppDbContext : DbContext
     public DbSet<Artist> Artists { get; set; } = null!;
     public DbSet<Comments> Comments { get; set; } = null!;
     public DbSet<AuthorRequest> AuthorRequests => Set<AuthorRequest>();
+    public DbSet<UserListeningHistory> UserListeningHistories => Set<UserListeningHistory>();
+    public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
+    public DbSet<Genre> Genres => Set<Genre>();
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -121,6 +125,24 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Genre>()
             .HasIndex(g => g.Slug)
             .IsUnique();
+
+        // ================================
+        // Recomendations
+        // ================================
+
+
+        modelBuilder.Entity<UserListeningHistory>()
+            .HasKey(x => new { x.UserId, x.TrackId, x.PlayedAt });
+
+        modelBuilder.Entity<UserListeningHistory>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId);
+
+        modelBuilder.Entity<UserListeningHistory>()
+            .HasOne(x => x.Track)
+            .WithMany()
+            .HasForeignKey(x => x.TrackId);
 
     }
 }

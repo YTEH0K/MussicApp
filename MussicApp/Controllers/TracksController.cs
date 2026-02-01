@@ -11,13 +11,16 @@ public class TracksController : ControllerBase
 {
     private readonly ITrackService _tracks;
     private readonly IFileStorageService _files;
+    private readonly IRadioService _radio;
 
     public TracksController(
         ITrackService tracks,
-        IFileStorageService files)
+        IFileStorageService files,
+        IRadioService radio)
     {
         _tracks = tracks;
         _files = files;
+        _radio = radio;
     }
 
     private static TrackDto ToDto(Track track)
@@ -257,6 +260,66 @@ public class TracksController : ControllerBase
             Name = track.Artist.Name
         });
     }
+
+    [Authorize]
+    [HttpPost("{id:guid}/played")]
+    public async Task<IActionResult> TrackPlayed(
+    Guid id,
+    [FromBody] TrackPlayedDto dto)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        await _tracks.AddListeningHistoryAsync(
+            userId,
+            id,
+            TimeSpan.FromSeconds(dto.PlayedSeconds)
+        );
+
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpGet("history")]
+    public async Task<IActionResult> MyListeningHistory(
+    [FromQuery] int limit = 50)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var history = await _tracks.GetListeningHistoryAsync(userId, limit);
+
+        return Ok(history.Select(h => new
+        {
+            h.TrackId,
+            TrackTitle = h.Track.Title,
+            Artist = h.Track.Artist?.Name,
+            h.PlayedAt,
+            PlayedSeconds = h.PlayedDuration.TotalSeconds
+        }));
+    }
+
+    [HttpGet("recent")]
+    public async Task<IActionResult> GetRecentlyPlayed(
+    [FromQuery] int source = 50,
+    [FromQuery] int limit = 20)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var result = await _radio.GetRandomRecentlyPlayedAsync(
+            userId,
+            source,
+            limit
+        );
+
+        return Ok(result);
+    }
+
+
 }
 
 public class TrackDto
@@ -291,4 +354,9 @@ public class ArtistDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = null!;
+}
+
+public class TrackPlayedDto
+{
+    public double PlayedSeconds { get; set; }
 }
