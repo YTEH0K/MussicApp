@@ -4,8 +4,8 @@
     {
         public Guid Id { get; set; }
 
-        public string Slug { get; set; } = null!; // rock, hip-hop
-        public string Name { get; set; } = null!; // Rock
+        public string Slug { get; set; } = null!;
+        public string Name { get; set; } = null!;
         public string? Description { get; set; }
 
         public bool IsActive { get; set; } = true;

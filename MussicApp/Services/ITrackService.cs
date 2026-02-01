@@ -20,5 +20,7 @@ public interface ITrackService
     Task<IEnumerable<Artist>> GetAllArtistsAsync();
     Task<Track> UpdateAsync(Track track);
     Task<IEnumerable<Track>> GetByGenreSlugAsync(string slug);
+    Task AddListeningHistoryAsync(Guid userId, Guid trackId, TimeSpan playedDuration);
+    Task<IEnumerable<UserListeningHistory>> GetListeningHistoryAsync(Guid userId, int limit = 50);
     //Task<Track?> GetLyricById (Guid id);
 }

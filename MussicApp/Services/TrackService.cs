@@ -191,5 +191,45 @@ public class TrackService : ITrackService
             .ToListAsync();
     }
 
+    public async Task AddListeningHistoryAsync(
+    Guid userId,
+    Guid trackId,
+    TimeSpan playedDuration)
+    {
+        // базовая защита от мусора
+        if (playedDuration.TotalSeconds < 5)
+            return;
+
+        var exists = await _db.Tracks
+            .AnyAsync(t => t.Id == trackId);
+
+        if (!exists)
+            throw new InvalidOperationException("Track not found");
+
+        var history = new UserListeningHistory
+        {
+            UserId = userId,
+            TrackId = trackId,
+            PlayedAt = DateTime.UtcNow,
+            PlayedDuration = playedDuration
+        };
+
+        _db.UserListeningHistories.Add(history);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<UserListeningHistory>> GetListeningHistoryAsync(
+    Guid userId,
+    int limit = 50)
+    {
+        return await _db.UserListeningHistories
+            .Where(h => h.UserId == userId)
+            .Include(h => h.Track)
+                .ThenInclude(t => t.Artist)
+            .OrderByDescending(h => h.PlayedAt)
+            .Take(limit)
+            .ToListAsync();
+    }
+
 
 }
