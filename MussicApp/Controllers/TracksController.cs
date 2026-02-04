@@ -283,7 +283,7 @@ public class TracksController : ControllerBase
     [Authorize]
     [HttpGet("history")]
     public async Task<IActionResult> MyListeningHistory(
-    [FromQuery] int limit = 50)
+        [FromQuery] int limit = 50)
     {
         var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
@@ -291,15 +291,16 @@ public class TracksController : ControllerBase
 
         var history = await _tracks.GetListeningHistoryAsync(userId, limit);
 
-        return Ok(history.Select(h => new
+        var result = history.Select(h => new ListeningHistoryDto
         {
-            h.TrackId,
-            TrackTitle = h.Track.Title,
-            Artist = h.Track.Artist?.Name,
-            h.PlayedAt,
+            Track = ToDto(h.Track),
+            PlayedAt = h.PlayedAt,
             PlayedSeconds = h.PlayedDuration.TotalSeconds
-        }));
+        });
+
+        return Ok(result);
     }
+
 
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecentlyPlayed(
@@ -358,5 +359,12 @@ public class ArtistDto
 
 public class TrackPlayedDto
 {
+    public double PlayedSeconds { get; set; }
+}
+
+public class ListeningHistoryDto
+{
+    public TrackDto Track { get; set; } = null!;
+    public DateTime PlayedAt { get; set; }
     public double PlayedSeconds { get; set; }
 }
