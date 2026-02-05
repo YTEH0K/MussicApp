@@ -231,5 +231,44 @@ public class TrackService : ITrackService
             .ToListAsync();
     }
 
+    public async Task SetUserFavoriteGenresAsync(
+    Guid userId,
+    IEnumerable<Guid> genreIds)
+    {
+        var ids = genreIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+            throw new InvalidOperationException("Select at least one genre");
+
+        var validGenreIds = await _db.Genres
+            .Where(g => ids.Contains(g.Id) && g.IsActive)
+            .Select(g => g.Id)
+            .ToListAsync();
+
+        if (validGenreIds.Count == 0)
+            throw new InvalidOperationException("Invalid genres");
+
+        var alreadySelected = await _db.UserFavoriteGenres
+            .AnyAsync(x => x.UserId == userId);
+
+        if (alreadySelected)
+            throw new InvalidOperationException(
+                "Favorite genres already selected"
+            );
+
+        var entities = validGenreIds.Select(gid =>
+            new UserFavoriteGenre
+            {
+                UserId = userId,
+                GenreId = gid
+            });
+
+        _db.UserFavoriteGenres.AddRange(entities);
+        await _db.SaveChangesAsync();
+    }
+
 
 }
