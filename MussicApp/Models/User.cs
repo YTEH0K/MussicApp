@@ -30,7 +30,7 @@ public class User
 
     public ICollection<Comments> Comments { get; set; }
         = new List<Comments>();
-
+    public ICollection<UserFavoriteGenre> FavoriteGenres { get; set; } = [];
     public UserRole Role { get; set; } = UserRole.User;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

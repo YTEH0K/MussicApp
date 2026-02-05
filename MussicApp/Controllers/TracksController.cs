@@ -279,48 +279,6 @@ public class TracksController : ControllerBase
 
         return Ok();
     }
-
-    [Authorize]
-    [HttpGet("history")]
-    public async Task<IActionResult> MyListeningHistory(
-        [FromQuery] int limit = 50)
-    {
-        var userId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var history = await _tracks.GetListeningHistoryAsync(userId, limit);
-
-        var result = history.Select(h => new ListeningHistoryDto
-        {
-            Track = ToDto(h.Track),
-            PlayedAt = h.PlayedAt,
-            PlayedSeconds = h.PlayedDuration.TotalSeconds
-        });
-
-        return Ok(result);
-    }
-
-
-    [HttpGet("recent")]
-    public async Task<IActionResult> GetRecentlyPlayed(
-    [FromQuery] int source = 50,
-    [FromQuery] int limit = 20)
-    {
-        var userId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var result = await _radio.GetRandomRecentlyPlayedAsync(
-            userId,
-            source,
-            limit
-        );
-
-        return Ok(result);
-    }
-
-
 }
 
 public class TrackDto
@@ -359,12 +317,5 @@ public class ArtistDto
 
 public class TrackPlayedDto
 {
-    public double PlayedSeconds { get; set; }
-}
-
-public class ListeningHistoryDto
-{
-    public TrackDto Track { get; set; } = null!;
-    public DateTime PlayedAt { get; set; }
     public double PlayedSeconds { get; set; }
 }

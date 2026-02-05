@@ -8,7 +8,7 @@
             Guid userId,
             int limit
         );
-
+        Task<List<RadioQueueItemDto>> BuildRecommendationsAsync(Guid userId, int limit);
         Task<List<ListeningHistoryItemDto>> GetListeningHistoryAsync(
             Guid userId,
             int limit

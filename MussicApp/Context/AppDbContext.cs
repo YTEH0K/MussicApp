@@ -23,7 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<UserListeningHistory> UserListeningHistories => Set<UserListeningHistory>();
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
     public DbSet<Genre> Genres => Set<Genre>();
-
+    public DbSet<UserFavoriteGenre> UserFavoriteGenres => Set<UserFavoriteGenre>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -143,6 +143,22 @@ public class AppDbContext : DbContext
             .HasOne(x => x.Track)
             .WithMany()
             .HasForeignKey(x => x.TrackId);
+
+
+
+
+        modelBuilder.Entity<UserFavoriteGenre>()
+        .HasKey(x => new { x.UserId, x.GenreId });
+
+        modelBuilder.Entity<UserFavoriteGenre>()
+            .HasOne(x => x.User)
+            .WithMany(u => u.FavoriteGenres)
+            .HasForeignKey(x => x.UserId);
+
+        modelBuilder.Entity<UserFavoriteGenre>()
+            .HasOne(x => x.Genre)
+            .WithMany()
+            .HasForeignKey(x => x.GenreId);
 
     }
 }
