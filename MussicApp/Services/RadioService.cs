@@ -14,9 +14,9 @@ namespace MussicApp.Services
         }
 
         public async Task<List<RadioQueueItemDto>> BuildRadioQueueAsync(
-    Guid seedTrackId,
-    Guid userId,
-    int limit)
+        Guid seedTrackId,
+        Guid userId,
+        int limit)
         {
             var seed = await _db.Tracks
                 .Include(t => t.Artist)
@@ -31,17 +31,16 @@ namespace MussicApp.Services
 
             // ===== ІСТОРІЯ КОРИСТУВАЧА =====
             var listenedTrackIds = await _db.UserListeningHistories
-                .Where(h => h.UserId == userId)
-                .Select(h => h.TrackId)
-                .ToHashSetAsync();
+    .Where(h => h.UserId == userId)
+    .Select(h => h.TrackId)
+    .ToHashSetAsync();
 
             var hasHistory = listenedTrackIds.Any();
 
-            Dictionary<Guid, int> userGenreWeights;
+            Dictionary<Guid, int> userGenreWeights = new();
 
             if (hasHistory)
             {
-                // 🎧 Жанри з історії прослуховувань
                 userGenreWeights = await _db.UserListeningHistories
                     .Where(h => h.UserId == userId)
                     .Join(_db.TrackGenres,
@@ -50,17 +49,6 @@ namespace MussicApp.Services
                         (_, tg) => tg.GenreId)
                     .GroupBy(g => g)
                     .ToDictionaryAsync(g => g.Key, g => g.Count());
-            }
-            else
-            {
-                // 🧊 Cold start — улюблені жанри користувача
-                userGenreWeights = await _db.UserFavoriteGenres
-                    .Where(x => x.UserId == userId)
-                    .GroupBy(x => x.GenreId)
-                    .ToDictionaryAsync(
-                        g => g.Key,
-                        g => 5 // базова вага для seed
-                    );
             }
 
             var seedGenreIds = seed.TrackGenres
@@ -141,30 +129,54 @@ namespace MussicApp.Services
                 .ToList();
         }
 
-        public async Task<List<RadioQueueItemDto>> BuildRecommendationsAsync(Guid userId, int limit)
+        public async Task<List<RadioQueueItemDto>> BuildRecommendationsAsync(
+        Guid userId,
+        int limit)
         {
-            // --- Всі треки, які користувач вже слухав ---
             var listenedTrackIds = await _db.UserListeningHistories
                 .Where(h => h.UserId == userId)
                 .Select(h => h.TrackId)
                 .ToHashSetAsync();
 
-            // --- Favorite genres користувача ---
-            var favoriteGenres = await _db.UserFavoriteGenres
-                .Where(f => f.UserId == userId)
-                .Select(f => f.GenreId)
-                .ToListAsync();
+            var hasHistory = listenedTrackIds.Any();
 
-            if (!favoriteGenres.Any())
-                return new(); // якщо немає favorite genres, нічого не радимо
+            Dictionary<Guid, int> genreWeights;
 
-            // --- Кандидати: треки, які ще не слухав ---
+            if (hasHistory)
+            {
+                // 🎧 Історія прослуховувань
+                genreWeights = await _db.UserListeningHistories
+                    .Where(h => h.UserId == userId)
+                    .Join(_db.TrackGenres,
+                        h => h.TrackId,
+                        tg => tg.TrackId,
+                        (_, tg) => tg.GenreId)
+                    .GroupBy(g => g)
+                    .ToDictionaryAsync(g => g.Key, g => g.Count());
+            }
+            else
+            {
+                // 🧊 Cold start — favorite genres
+                genreWeights = await _db.UserFavoriteGenres
+                    .Where(f => f.UserId == userId)
+                    .GroupBy(f => f.GenreId)
+                    .ToDictionaryAsync(
+                        g => g.Key,
+                        g => 5
+                    );
+            }
+
+            if (!genreWeights.Any())
+                return new();
+
             var candidates = await _db.Tracks
                 .Include(t => t.Artist)
                 .Include(t => t.TrackGenres)
                     .ThenInclude(tg => tg.Genre)
                 .Include(t => t.LikedByUsers)
-                .Where(t => t.Status == TrackStatus.Approved && !listenedTrackIds.Contains(t.Id))
+                .Where(t =>
+                    t.Status == TrackStatus.Approved &&
+                    !listenedTrackIds.Contains(t.Id))
                 .ToListAsync();
 
             var scored = new List<(Track track, double score, List<string> reasons)>();
@@ -174,20 +186,18 @@ namespace MussicApp.Services
                 double score = 0;
                 var reasons = new List<string>();
 
-                // 🎼 Спільні жанри з улюбленими жанрами користувача
-                var commonGenres = track.TrackGenres.Count(tg => favoriteGenres.Contains(tg.GenreId));
-                if (commonGenres > 0)
+                foreach (var tg in track.TrackGenres)
                 {
-                    score += commonGenres * 40;
-                    reasons.Add("Matches user's favorite genre(s)");
+                    if (genreWeights.TryGetValue(tg.GenreId, out var weight))
+                    {
+                        score += weight * 15;
+                        reasons.Add(hasHistory
+                            ? "Based on listening history"
+                            : "Based on favorite genres");
+                    }
                 }
 
-                // 🎤 Популярний артист (бонус якщо улюблений жанр + той самий артист)
-                if (track.LikedByUsers.Count > 0)
-                {
-                    score += track.LikedByUsers.Count * 2;
-                    reasons.Add("Popular track");
-                }
+                score += track.LikedByUsers.Count * 2;
 
                 if (score > 0)
                     scored.Add((track, score, reasons));
@@ -206,6 +216,7 @@ namespace MussicApp.Services
                 })
                 .ToList();
         }
+
 
 
         public async Task<List<ListeningHistoryItemDto>> GetListeningHistoryAsync(Guid userId, int limit)

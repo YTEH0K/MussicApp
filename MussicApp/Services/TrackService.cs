@@ -270,5 +270,13 @@ public class TrackService : ITrackService
         await _db.SaveChangesAsync();
     }
 
+    public async Task<IEnumerable<Genre>> GetAllGenresAsync()
+    {
+        return await _db.Genres
+            .Where(g => g.IsActive)
+            .OrderBy(g => g.Name)
+            .ToListAsync();
+    }
+
 
 }

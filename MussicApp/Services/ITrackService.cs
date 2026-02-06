@@ -23,5 +23,7 @@ public interface ITrackService
     Task AddListeningHistoryAsync(Guid userId, Guid trackId, TimeSpan playedDuration);
     Task<IEnumerable<UserListeningHistory>> GetListeningHistoryAsync(Guid userId, int limit = 50);
     Task SetUserFavoriteGenresAsync(Guid userId, IEnumerable<Guid> genreIds);
+    Task<IEnumerable<Genre>> GetAllGenresAsync();
+
     //Task<Track?> GetLyricById (Guid id);
 }
