@@ -62,7 +62,7 @@ builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IIconService, IconService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IAdminTrackService, AdminTrackService>();
-
+builder.Services.AddScoped<IRadioService, RadioService>();
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
