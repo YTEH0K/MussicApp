@@ -14,8 +14,9 @@ namespace MussicApp.Controllers
         private readonly IRadioService _radio;
         private readonly ITrackService _tracks;
 
-        public RadioController(IRadioService radio)
+        public RadioController(IRadioService radio, ITrackService tracks)
         {
+            _tracks = tracks;
             _radio = radio;
         }
 
