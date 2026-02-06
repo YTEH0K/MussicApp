@@ -127,6 +127,24 @@ namespace MussicApp.Controllers
             }
         }
 
+        [Authorize]
+        [HttpGet("recommendations")]
+        public async Task<IActionResult> GetRecommendations(
+        [FromQuery] int limit = 20)
+        {
+            var userId = Guid.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!
+            );
+
+            var result = await _radio.BuildRecommendationsAsync(
+                userId,
+                limit
+            );
+
+            return Ok(result);
+        }
+
+
     }
 
 }

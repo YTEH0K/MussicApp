@@ -279,6 +279,24 @@ public class TracksController : ControllerBase
 
         return Ok();
     }
+
+    [HttpGet("genres")]
+    public async Task<IActionResult> GetGenres()
+    {
+        var genres = await _tracks.GetAllGenresAsync();
+
+        var result = genres.Select(g => new GenreDto
+        {
+            Id = g.Id,
+            Slug = g.Slug,
+            Name = g.Name,
+            Description = g.Description,
+            IsActive = g.IsActive
+        });
+
+        return Ok(result);
+    }
+
 }
 
 public class TrackDto
@@ -318,4 +336,13 @@ public class ArtistDto
 public class TrackPlayedDto
 {
     public double PlayedSeconds { get; set; }
+}
+
+public class GenreDto
+{
+    public Guid Id { get; set; }
+    public string Slug { get; set; } = null!;
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; }
 }
