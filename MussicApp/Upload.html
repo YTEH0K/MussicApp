@@ -1,28 +1,154 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8" />
-    <title>Google Login Test</title>
+    <title>Music Admin Upload</title>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 700px;
+            margin: 40px auto;
+        }
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+        input, textarea, select, button {
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 8px;
+        }
+
+        textarea {
+            height: 100px;
+        }
+
+        select[multiple] {
+            height: 500px;
+        }
+
+        button {
+            background: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #result {
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
 
-    <h2>Google Login Test</h2>
+    <h2>Upload Track</h2>
 
-    <div id="g_id_onload"
-         data-client_id="1001601235326-aqvtqu4ik2j3fgj4p58dt3gaf5ukumj0.apps.googleusercontent.com"
-         data-callback="handleCredentialResponse">
-    </div>
+    <label>JWT Token</label>
+    <input type="text" id="jwt" placeholder="Paste your JWT here" />
 
-    <div class="g_id_signin"></div>
+    <label>Title</label>
+    <input type="text" id="title" />
+
+    <label>Lyrics</label>
+    <textarea id="lyrics"></textarea>
+
+    <label>Artist</label>
+    <select id="artist"></select>
+
+    <label>Genres (Ctrl + Click multiple)</label>
+    <select id="genres" multiple></select>
+
+    <label>Audio File</label>
+    <input type="file" id="audio" accept=".mp3" />
+
+    <label>Cover</label>
+    <input type="file" id="cover" accept="image/*" />
+
+    <button onclick="upload()">Upload</button>
+
+    <p id="result"></p>
 
     <script>
-        function handleCredentialResponse(response) {
-            console.log("ID TOKEN:");
-            console.log(response.credential);
-            alert("Token logged to console");
+        const API = "http://localhost:8080/api/tracks";
+
+        async function loadArtists() {
+            const res = await fetch(`${API}/artists`);
+            const artists = await res.json();
+            const select = document.getElementById("artist");
+            artists.forEach(a => {
+                const option = document.createElement("option");
+                option.value = a.id;
+                option.textContent = a.name;
+                select.appendChild(option);
+            });
         }
+
+        async function loadGenres() {
+            const res = await fetch(`${API}/genres`);
+            const genres = await res.json();
+            const select = document.getElementById("genres");
+            genres.forEach(g => {
+                const option = document.createElement("option");
+                option.value = g.id;
+                option.textContent = g.name;
+                select.appendChild(option);
+            });
+        }
+
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function getRandomFontSize() {
+            return `${16 + Math.floor(Math.random() * 25)}px`; // 16px - 40px
+        }
+
+        async function upload() {
+            const jwt = document.getElementById("jwt").value;
+            const title = document.getElementById("title").value;
+            const lyrics = document.getElementById("lyrics").value;
+            const artistId = document.getElementById("artist").value;
+            const audio = document.getElementById("audio").files[0];
+            const cover = document.getElementById("cover").files[0];
+
+            const genreSelect = document.getElementById("genres");
+            const selectedGenres = Array.from(genreSelect.selectedOptions).map(o => o.value);
+
+            const formData = new FormData();
+            formData.append("title", title);
+            formData.append("lyrics", lyrics);
+            formData.append("artistId", artistId);
+            formData.append("file", audio);
+            formData.append("cover", cover);
+
+            selectedGenres.forEach(g => formData.append("genreIds", g));
+
+            const res = await fetch(`${API}/upload`, {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + jwt
+                },
+                body: formData
+            });
+
+            const result = document.getElementById("result");
+
+            if (res.ok) {
+                result.style.color = getRandomColor();
+                result.style.fontSize = getRandomFontSize();
+                result.innerText = "Uploaded successfully! 🎵";
+            } else {
+                result.style.color = "red";
+                result.style.fontSize = "16px";
+                const err = await res.text();
+                result.innerText = "Error: " + err;
+            }
+        }
+
+        loadArtists();
+        loadGenres();
     </script>
 
 </body>

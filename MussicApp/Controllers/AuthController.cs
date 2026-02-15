@@ -362,10 +362,11 @@ public record AuthResponse(
     Guid Id,
     string Username,
     string Email,
-    string Token)
+    string Token,
+    int Role) // додав роль бо ерор login failed був
 {
     public AuthResponse(User user, string token)
-        : this(user.Id, user.Username, user.Email, token) { }
+        : this(user.Id, user.Username, user.Email, token, (int)user.Role) { }
 }
 
 public record AuthorRequestDto(string Username);
