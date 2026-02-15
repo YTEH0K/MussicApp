@@ -104,7 +104,7 @@ namespace MussicApp.Services
                 // 🎤 Той самий артист
                 if (track.ArtistId == seed.ArtistId)
                 {
-                    score += 50;
+                    score += 20;
                     reasons.Add("Same artist");
                 }
 

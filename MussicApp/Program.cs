@@ -26,6 +26,11 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 50 * 1024 * 1024;
     options.ListenAnyIP(8080);
+
+    //options.Listen(System.Net.IPAddress.Loopback, 7139, listenOptions =>
+    //{
+    //    listenOptions.UseHttps();
+    //});
 });
 
 /* ---------- CORS ---------- */
