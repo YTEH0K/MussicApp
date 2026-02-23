@@ -7,9 +7,15 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using MussicApp.Data;
-using MussicApp.Models;
+using MussicApp.Models.Other;
+using MussicApp.Services.Admin;
+using MussicApp.Services;
+using MussicApp.Services.Other;
+using MussicApp.Services.Radio;
+using MussicApp.Services;
 using MussicApp.Services;
 using System.Text;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +29,7 @@ builder.Services.Configure<FormOptions>(options =>
 
 /* ---------- Kestrel ---------- */
 builder.WebHost.ConfigureKestrel(options =>
+
 {
     options.Limits.MaxRequestBodySize = 50 * 1024 * 1024;
     options.ListenAnyIP(8080);
@@ -68,6 +75,9 @@ builder.Services.AddScoped<IIconService, IconService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IAdminTrackService, AdminTrackService>();
 builder.Services.AddScoped<IRadioService, RadioService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.Configure<StripeSettings>(
+    builder.Configuration.GetSection("Stripe"));
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
@@ -103,6 +113,9 @@ builder.Services.AddAuthorization();
 
 
 var app = builder.Build();
+
+StripeConfiguration.ApiKey =
+    builder.Configuration["Stripe:SecretKey"];
 
 /* ---------- Middleware ---------- */
 if (app.Environment.IsDevelopment())

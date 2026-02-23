@@ -1,5 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MussicApp.Models;
+using MussicApp.Models.AlbumRelated;
+using MussicApp.Models.Other;
+using MussicApp.Models.TracksRelated;
+using MussicApp.Models.UserRelated;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 

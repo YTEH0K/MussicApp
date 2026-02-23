@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MussicApp.Models;
+using MussicApp.Models.TracksRelated;
 using MussicApp.Services;
+using MussicApp.Services.Radio;
 using System.Security.Claims;
 
 [ApiController]
@@ -297,6 +299,12 @@ public class TracksController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("search")]
+    public async Task<IActionResult> Search([FromQuery] string query)
+    {
+        var result = await _tracks.SearchByNameAsync(query);
+        return Ok(result);
+    }
 }
 
 public class TrackDto

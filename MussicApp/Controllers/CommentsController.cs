@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MussicApp.Models;
+using MussicApp.Models.TracksRelated;
 using MussicApp.Services;
 using System.Security.Claims;
 

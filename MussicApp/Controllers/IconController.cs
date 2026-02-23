@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MussicApp.Models;
-using MussicApp.Services;
+using MussicApp.Services.Other;
 
 [ApiController]
 [Route("api/[controller]")]

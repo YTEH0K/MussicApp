@@ -6,6 +6,9 @@ using System.Security.Cryptography;
 using System.Security.Claims;
 using MussicApp.Data;
 using Microsoft.EntityFrameworkCore;
+using MussicApp.Models.UserRelated;
+using MussicApp.Services.Other;
+using MussicApp.Services;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -314,7 +317,7 @@ public class AuthController : ControllerBase
                 return BadRequest("Artist name already exists");
         }
 
-        var request = new AuthorRequest
+        var request = new MussicApp.Models.Other.AuthorRequest
         {
             Id = Guid.NewGuid(),
             UserId = userId,

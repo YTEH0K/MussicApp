@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Buy Premium</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .card {
+            background: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            width: 400px;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 6px;
+            border: none;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px;
+            width: 100%;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            background: #635bff;
+            color: white;
+            cursor: pointer;
+        }
+
+            button:hover {
+                opacity: 0.9;
+            }
+
+        .status {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Premium підписка</h2>
+        <p>Встав свій JWT токен</p>
+
+        <input type="text" id="jwt" placeholder="Bearer token тут..." />
+
+        <button onclick="buyPremium()">Купити Premium</button>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        async function buyPremium() {
+            const jwt = document.getElementById("jwt").value;
+            const status = document.getElementById("status");
+
+            if (!jwt) {
+                status.innerText = "Встав JWT токен";
+                return;
+            }
+
+            status.innerText = "Створення сесії...";
+
+            try {
+                const response = await fetch("http://localhost:8080/api/payments/create", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + jwt
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Помилка створення сесії");
+                }
+
+                const data = await response.json();
+
+                window.location.href = data.url;
+
+            } catch (error) {
+                status.innerText = "Помилка: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
