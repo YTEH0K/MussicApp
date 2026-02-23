@@ -3,8 +3,6 @@ using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
-using MussicApp.Models;
-using MussicApp.Services;
 using System.Security.Claims;
 using MussicApp.Data;
 using Microsoft.EntityFrameworkCore;
