@@ -1,101 +1,280 @@
 ﻿<!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <title>Buy Premium</title>
+    <meta charset="UTF-8" />
+    <title>MussicApp Album & History Manager</title>
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            font-family: Arial;
+            margin: 30px;
+            background: #f5f5f5;
         }
 
-        .card {
-            background: #1e1e1e;
-            padding: 40px;
-            border-radius: 12px;
-            width: 400px;
-            text-align: center;
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
         }
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 6px;
-            border: none;
+        input, select, button {
+            margin: 5px 0;
+            padding: 6px;
         }
 
         button {
-            margin-top: 20px;
-            padding: 12px;
-            width: 100%;
-            border-radius: 8px;
-            border: none;
-            font-size: 16px;
-            background: #635bff;
-            color: white;
             cursor: pointer;
         }
 
-            button:hover {
-                opacity: 0.9;
-            }
-
-        .status {
-            margin-top: 15px;
-            font-size: 14px;
+        .track {
+            border-bottom: 1px solid #ddd;
+            padding: 5px 0;
         }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Premium підписка</h2>
-        <p>Встав свій JWT токен</p>
 
-        <input type="text" id="jwt" placeholder="Bearer token тут..." />
+<h2>🎵 MussicApp Manager</h2>
 
-        <button onclick="buyPremium()">Купити Premium</button>
+<section>
+    <h3>🔐 JWT Token</h3>
+    <input type="text" id="token" placeholder="Paste JWT token here" style="width:100%" />
+</section>
 
-        <div class="status" id="status"></div>
-    </div>
+<section>
+    <h3>👤 User GUID</h3>
+    <input type="text" id="userId" placeholder="User GUID (OwnerId)" style="width:100%" />
+</section>
 
-    <script>
-        async function buyPremium() {
-            const jwt = document.getElementById("jwt").value;
-            const status = document.getElementById("status");
+<section>
+    <h3>📀 Create Album</h3>
+    <input type="text" id="albumTitle" placeholder="Album title" />
+    <input type="file" id="coverFile" />
+    <br />
+    <button onclick="createAlbum()">Create Album</button>
+</section>
 
-            if (!jwt) {
-                status.innerText = "Встав JWT токен";
-                return;
-            }
+<section>
+    <h3>📂 My Albums</h3>
+    <button onclick="loadMyAlbums()">Load My Albums</button>
+    <br />
+    <select id="albumsSelect" style="width:100%"></select>
+</section>
 
-            status.innerText = "Створення сесії...";
+<section>
+    <h3>🎶 Tracks</h3>
+    <button onclick="loadTracks()">Load Tracks</button>
+    <div id="tracksList"></div>
+    <br />
+    <button onclick="addTracksToAlbum()">Add Selected Tracks To Album</button>
+</section>
 
-            try {
-                const response = await fetch("http://localhost:8080/api/payments/create", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": "Bearer " + jwt
-                    }
-                });
+<section>
+    <h3>📜 Listening History</h3>
 
-                if (!response.ok) {
-                    throw new Error("Помилка створення сесії");
-                }
+    <button onclick="loadAllTracksForHistory()">Load Tracks</button>
+    <div id="historyTracksList"></div>
 
-                const data = await response.json();
+    <br />
+    <button onclick="addSelectedToHistory()">Add Selected To History</button>
 
-                window.location.href = data.url;
+    <hr />
 
-            } catch (error) {
-                status.innerText = "Помилка: " + error.message;
-            }
-        }
-    </script>
+    <button onclick="loadMyHistory()">Load My History</button>
+    <div id="myHistoryList"></div>
+</section>
+
+<script>
+
+const API = "http://localhost:8080/api";
+
+function getHeaders(isJson = true) {
+    return {
+        "Authorization": "Bearer " + document.getElementById("token").value,
+        ...(isJson ? { "Content-Type": "application/json" } : {})
+    };
+}
+
+// ===== ALBUM =====
+
+async function createAlbum() {
+    const title = document.getElementById("albumTitle").value;
+    const cover = document.getElementById("coverFile").files[0];
+
+    const formData = new FormData();
+    formData.append("title", title);
+    if (cover) formData.append("cover", cover);
+
+    const res = await fetch(`${API}/album/create`, {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + document.getElementById("token").value
+        },
+        body: formData
+    });
+
+    if (!res.ok) {
+        alert("Error creating album");
+        return;
+    }
+
+    alert("Album created!");
+    loadMyAlbums();
+}
+
+async function loadMyAlbums() {
+    const res = await fetch(`${API}/album/my`, {
+        headers: getHeaders()
+    });
+
+    if (!res.ok) {
+        alert("Error loading albums");
+        return;
+    }
+
+    const albums = await res.json();
+    const select = document.getElementById("albumsSelect");
+    select.innerHTML = "";
+
+    albums.forEach(a => {
+        const option = document.createElement("option");
+        option.value = a.id;
+        option.textContent = a.title;
+        select.appendChild(option);
+    });
+}
+
+async function loadTracks() {
+    const res = await fetch(`${API}/tracks`);
+    const tracks = await res.json();
+
+    const container = document.getElementById("tracksList");
+    container.innerHTML = "";
+
+    tracks.forEach(t => {
+        const div = document.createElement("div");
+        div.className = "track";
+
+        div.innerHTML = `
+            <input type="checkbox" value="${t.id}" />
+            <strong>${t.title}</strong><br/>
+            Автор: ${t.artistName ?? "—"}<br/>
+            Жанри: ${(t.genres ?? []).join(", ")}
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+async function addTracksToAlbum() {
+    const albumId = document.getElementById("albumsSelect").value;
+
+    if (!albumId) {
+        alert("Select album first");
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll("#tracksList input[type=checkbox]:checked");
+
+    for (let cb of checkboxes) {
+        await fetch(`${API}/album/${albumId}/add-track`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ trackId: cb.value })
+        });
+    }
+
+    alert("Tracks added to album!");
+}
+
+// ===== HISTORY =====
+
+async function loadAllTracksForHistory() {
+    const res = await fetch(`${API}/tracks`);
+    const tracks = await res.json();
+
+    const container = document.getElementById("historyTracksList");
+    container.innerHTML = "";
+
+    tracks.forEach(t => {
+        const div = document.createElement("div");
+        div.className = "track";
+
+        div.innerHTML = `
+            <input type="checkbox" value="${t.id}" />
+            <strong>${t.title}</strong><br/>
+            Автор: ${t.artistName ?? "—"}
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+async function addSelectedToHistory() {
+
+    const userId = document.getElementById("userId").value;
+
+    if (!userId) {
+        alert("UserId required");
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll("#historyTracksList input[type=checkbox]:checked");
+
+    if (checkboxes.length === 0) {
+        alert("No tracks selected");
+        return;
+    }
+
+    for (let cb of checkboxes) {
+        await fetch(`${API}/history/add`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                userId: userId,
+                trackId: cb.value
+            })
+        });
+    }
+
+    alert("Added to history!");
+}
+
+async function loadMyHistory() {
+
+    const userId = document.getElementById("userId").value;
+
+    if (!userId) {
+        alert("UserId required");
+        return;
+    }
+
+    const res = await fetch(`${API}/history/${userId}`, {
+        headers: getHeaders(false)
+    });
+
+    if (!res.ok) {
+        alert("Error loading history");
+        return;
+    }
+
+    const history = await res.json();
+    const container = document.getElementById("myHistoryList");
+    container.innerHTML = "";
+
+    history.forEach(h => {
+        const div = document.createElement("div");
+        div.className = "track";
+        div.innerHTML = `
+            <strong>${h.trackTitle}</strong><br/>
+            Played At: ${h.playedAt}
+        `;
+        container.appendChild(div);
+    });
+}
+
+</script>
+
 </body>
 </html>

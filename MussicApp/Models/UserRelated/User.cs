@@ -10,7 +10,6 @@ public class User
 
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string? PhoneNumber { get; set; }
 
     public string? PasswordHash { get; set; }
 
@@ -29,8 +28,6 @@ public class User
     public ICollection<UserLikedTrack> LikedTracks { get; set; }
         = new List<UserLikedTrack>();
 
-    public ICollection<Comments> Comments { get; set; }
-        = new List<Comments>();
     public ICollection<UserFavoriteGenre> FavoriteGenres { get; set; } = [];
     public UserRole Role { get; set; } = UserRole.User;
     public string? StripeCustomerId { get; set; }

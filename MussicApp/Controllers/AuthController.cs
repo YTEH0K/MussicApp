@@ -45,7 +45,6 @@ public class AuthController : ControllerBase
             //Id = Guid.NewGuid(),
             Username = dto.Username,
             Email = dto.Email,
-            PhoneNumber = dto.PhoneNumber,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Provider = AuthProvider.Local,
 
@@ -334,7 +333,6 @@ public class AuthController : ControllerBase
 public record RegisterDto(
     string Username,
     string Email,
-    string PhoneNumber,
     string Password
 );
 
@@ -364,7 +362,7 @@ public record AuthResponse(
     string Username,
     string Email,
     string Token,
-    int Role) // додав роль бо ерор login failed був
+    int Role)
 {
     public AuthResponse(User user, string token)
         : this(user.Id, user.Username, user.Email, token, (int)user.Role) { }

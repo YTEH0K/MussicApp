@@ -305,6 +305,33 @@ public class TracksController : ControllerBase
         var result = await _tracks.SearchByNameAsync(query);
         return Ok(result);
     }
+
+    [HttpGet("search/artist")]
+    public async Task<IActionResult> SearchByArtist([FromQuery] string query)
+    {
+        var result = await _tracks.SearchByArtistAsync(query);
+        return Ok(result.Select(ToDto));
+    }
+
+    [HttpGet("search/genre")]
+    public async Task<IActionResult> SearchByGenre([FromQuery] string query)
+    {
+        var result = await _tracks.SearchByGenreNameAsync(query);
+        return Ok(result.Select(ToDto));
+    }
+
+    [Authorize]
+    [HttpGet("recent")]
+    public async Task<IActionResult> Recent()
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var result = await _tracks.GetRecentRandomAsync(userId);
+
+        return Ok(result.Select(ToDto));
+    }
 }
 
 public class TrackDto

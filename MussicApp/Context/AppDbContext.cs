@@ -22,7 +22,6 @@ public class AppDbContext : DbContext
     public DbSet<AlbumTrack> AlbumTracks => Set<AlbumTrack>();
     public DbSet<UserLikedTrack> UserLikedTracks => Set<UserLikedTrack>();
     public DbSet<Artist> Artists { get; set; } = null!;
-    public DbSet<Comments> Comments { get; set; } = null!;
     public DbSet<AuthorRequest> AuthorRequests => Set<AuthorRequest>();
     public DbSet<UserListeningHistory> UserListeningHistories => Set<UserListeningHistory>();
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
@@ -98,16 +97,6 @@ public class AppDbContext : DbContext
             .WithOne(at => at.Album)
             .HasForeignKey(at => at.AlbumId);
 
-
-        // ================================
-        // Comments
-        // ================================
-
-        modelBuilder.Entity<Comments>()
-            .HasOne(c => c.User)
-            .WithMany(u => u.Comments)
-            .HasForeignKey(c => c.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         // ================================
         // Genres

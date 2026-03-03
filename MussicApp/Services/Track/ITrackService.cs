@@ -26,6 +26,9 @@ public interface ITrackService
     Task SetUserFavoriteGenresAsync(Guid userId, IEnumerable<Guid> genreIds);
     Task<IEnumerable<Genre>> GetAllGenresAsync();
     Task<List<Track>> SearchByNameAsync(string query);
+    Task<List<Track>> SearchByArtistAsync(string artistName);
+    Task<List<Track>> SearchByGenreNameAsync(string genreName);
+    Task<List<Track>> GetRecentRandomAsync(Guid userId);
 
     //Task<Track?> GetLyricById (Guid id);
 }

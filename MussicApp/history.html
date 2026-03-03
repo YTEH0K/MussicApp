@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8" />
+    <title>MussicApp Track History</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 30px;
+            background: #f5f5f5;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        input, button {
+            margin: 5px 0;
+            padding: 6px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .track {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding: 8px 0;
+            gap: 10px;
+        }
+
+        .track-info {
+            flex: 1;
+        }
+
+        .add-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+
+            .add-btn:hover {
+                background: #45a049;
+            }
+    </style>
+</head>
+<body>
+
+    <h2>🎵 MussicApp Listening History</h2>
+
+    <section>
+        <h3>🔐 JWT Token</h3>
+        <input type="text" id="token" placeholder="Paste JWT token here" style="width:100%" />
+    </section>
+
+    <section>
+        <h3>🎶 Tracks</h3>
+        <button onclick="loadTracks()">Load Tracks</button>
+        <div id="tracksList"></div>
+    </section>
+
+    <script>
+
+        const API = "http://localhost:8080/api";
+
+        function getHeaders() {
+            return {
+                "Authorization": "Bearer " + document.getElementById("token").value,
+                "Content-Type": "application/json"
+            };
+        }
+
+        async function loadTracks() {
+
+            const res = await fetch(`${API}/tracks`);
+
+            if (!res.ok) {
+                alert("Error loading tracks");
+                return;
+            }
+
+            const tracks = await res.json();
+            const container = document.getElementById("tracksList");
+            container.innerHTML = "";
+
+            tracks.forEach(t => {
+
+                const div = document.createElement("div");
+                div.className = "track";
+
+                div.innerHTML = `
+                <button class="add-btn" onclick="addToHistory('${t.id}')">
+                    ➕
+                </button>
+
+                <div class="track-info">
+                    <strong>${t.title}</strong><br/>
+                    Автор: ${t.artistName ?? "—"}<br/>
+                    Жанри: ${(t.genres ?? []).join(", ")}
+                </div>
+            `;
+
+                container.appendChild(div);
+            });
+        }
+
+        async function addToHistory(trackId) {
+
+            const token = document.getElementById("token").value;
+
+            if (!token) {
+                alert("JWT token required");
+                return;
+            }
+
+            const playedSeconds = prompt("Скільки секунд було прослухано?", "30");
+
+            if (!playedSeconds) return;
+
+            const res = await fetch(`${API}/tracks/${trackId}/played`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    playedSeconds: parseInt(playedSeconds)
+                })
+            });
+
+            if (!res.ok) {
+                alert("Error adding to history");
+                return;
+            }
+
+            alert("Added to listening history!");
+        }
+
+    </script>
+
+</body>
+</html>

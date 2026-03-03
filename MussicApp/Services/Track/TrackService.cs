@@ -293,4 +293,59 @@ public class TrackService : ITrackService
             .ToListAsync();
     }
 
+    public async Task<List<Track>> SearchByArtistAsync(string artistName)
+    {
+        if (string.IsNullOrWhiteSpace(artistName))
+            return new List<Track>();
+
+        return await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved &&
+                        EF.Functions.ILike(t.Artist!.Name, $"%{artistName}%"))
+            .ToListAsync();
+    }
+
+    public async Task<List<Track>> SearchByGenreNameAsync(string genreName)
+    {
+        if (string.IsNullOrWhiteSpace(genreName))
+            return new List<Track>();
+
+        return await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved &&
+                        t.TrackGenres.Any(tg =>
+                            tg.Genre != null &&
+                            EF.Functions.ILike(tg.Genre.Name, $"%{genreName}%")))
+            .ToListAsync();
+    }
+
+    public async Task<List<Track>> GetRecentRandomAsync(Guid userId)
+    {
+        var history = await _db.UserListeningHistories
+            .Where(h => h.UserId == userId)
+            .OrderByDescending(h => h.PlayedAt)
+            .Take(50)
+            .Select(h => h.TrackId)
+            .Distinct()
+            .ToListAsync();
+
+        if (!history.Any())
+            return new List<Track>();
+
+        var randomIds = history
+            .OrderBy(x => Guid.NewGuid())
+            .Take(20)
+            .ToList();
+
+        return await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => randomIds.Contains(t.Id))
+            .ToListAsync();
+    }
 }
