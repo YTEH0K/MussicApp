@@ -104,6 +104,17 @@ public class AuthController : ControllerBase
             user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(15);
 
             await _users.UpdateAsync(user);
+
+            await _email.SendEmailAsync(
+                user.Email,
+                "Password reset code",
+                $"""
+            <h2>Password reset</h2>
+            <p>Your reset code:</p>
+            <h1>{code}</h1>
+            <p>This code expires in 15 minutes.</p>
+            """
+            );
         }
 
         return Ok("If this email exists, instructions were sent");
@@ -128,6 +139,18 @@ public class AuthController : ControllerBase
         return Ok("Password updated");
     }
 
+    [HttpPost("verify-reset-code")]
+    public async Task<IActionResult> VerifyResetCode(ConfirmEmailDto dto)
+    {
+        var user = await _users.GetByEmailAsync(dto.Email);
+
+        if (user == null ||
+            user.PasswordResetCode != dto.Code ||
+            user.PasswordResetExpiresAt < DateTime.UtcNow)
+            return BadRequest("Invalid or expired code");
+
+        return Ok("Code valid");
+    }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDto dto)
