@@ -288,8 +288,27 @@ public class TrackService : ITrackService
         if (string.IsNullOrWhiteSpace(query))
             return new List<Track>();
 
+        query = query.Trim();
+
+        var startsWith = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved &&
+                        EF.Functions.ILike(t.Title, $"{query}%"))
+            .Take(20)
+            .ToListAsync();
+
+        if (startsWith.Any())
+            return startsWith;
+
         return await _db.Tracks
-            .Where(t => EF.Functions.ILike(t.Title, $"%{query}%"))
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved &&
+                        EF.Functions.ILike(t.Title, $"%{query}%"))
+            .Take(20)
             .ToListAsync();
     }
 
@@ -298,12 +317,27 @@ public class TrackService : ITrackService
         if (string.IsNullOrWhiteSpace(artistName))
             return new List<Track>();
 
+        artistName = artistName.Trim();
+
+        var startsWith = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .Where(t => t.Status == TrackStatus.Approved &&
+                        EF.Functions.ILike(t.Artist!.Name, $"{artistName}%"))
+            .Take(20)
+            .ToListAsync();
+
+        if (startsWith.Any())
+            return startsWith;
+
         return await _db.Tracks
             .Include(t => t.Artist)
             .Include(t => t.TrackGenres)
                 .ThenInclude(tg => tg.Genre)
             .Where(t => t.Status == TrackStatus.Approved &&
                         EF.Functions.ILike(t.Artist!.Name, $"%{artistName}%"))
+            .Take(20)
             .ToListAsync();
     }
 

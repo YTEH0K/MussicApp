@@ -2,13 +2,14 @@
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Cryptography;
-using System.Security.Claims;
-using MussicApp.Data;
 using Microsoft.EntityFrameworkCore;
+using MussicApp.Data;
+using MussicApp.Models.Other;
 using MussicApp.Models.UserRelated;
-using MussicApp.Services.Other;
 using MussicApp.Services;
+using MussicApp.Services.Other;
+using System.Security.Claims;
+using System.Security.Cryptography;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -343,13 +344,33 @@ public class AuthController : ControllerBase
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            RequestedUsername = requestedUsername
+            RequestedUsername = requestedUsername,
+            Country = dto.Country
         };
 
         _db.AuthorRequests.Add(request);
         await _db.SaveChangesAsync();
 
         return Ok("Author request sent");
+    }
+
+    [ApiController]
+    [Route("api/countries")]
+    public class CountryController : ControllerBase
+    {
+        [HttpGet]
+        public IActionResult GetCountries()
+        {
+            var countries = Enum.GetValues(typeof(Country))
+                .Cast<Country>()
+                .Select(c => new
+                {
+                    Id = (int)c,
+                    Name = c.ToString()
+                });
+
+            return Ok(countries);
+        }
     }
 }
 
@@ -391,4 +412,7 @@ public record AuthResponse(
         : this(user.Id, user.Username, user.Email, token, (int)user.Role) { }
 }
 
-public record AuthorRequestDto(string Username);
+public record AuthorRequestDto(
+    string Username,
+    Country Country
+);

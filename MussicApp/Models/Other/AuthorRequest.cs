@@ -11,6 +11,8 @@ namespace MussicApp.Models.Other
 
         public string RequestedUsername { get; set; } = string.Empty;
 
+        public Country Country { get; set; }
+
         public AuthorRequestStatus Status { get; set; }
             = AuthorRequestStatus.Pending;
 

@@ -153,5 +153,28 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(x => x.GenreId);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        modelBuilder.Entity<Artist>()
+        .Property(a => a.Country)
+        .HasConversion<string>();
+
+        modelBuilder.Entity<AuthorRequest>()
+            .Property(a => a.Country)
+            .HasConversion<string>();
+
     }
 }

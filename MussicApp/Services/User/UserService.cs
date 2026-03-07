@@ -53,14 +53,14 @@ public class UserService : IUserService
         {
             user.Id = Guid.NewGuid();
 
-            var artist = new Artist
-            {
-                Id = user.Id,          // 🔑 той самий Id
-                Name = user.Username
-            };
+            //var artist = new Artist
+            //{
+            //    Id = user.Id,          // 🔑 той самий Id
+            //    Name = user.Username
+            //};
 
             _db.Users.Add(user);
-            _db.Artists.Add(artist);
+            //_db.Artists.Add(artist);
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();

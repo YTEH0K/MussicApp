@@ -96,16 +96,30 @@ public class AdminController : ControllerBase
         if (request.User.Username != request.RequestedUsername)
         {
             request.User.Username = request.RequestedUsername;
+        }
 
-            var artist = await _db.Artists.FindAsync(request.UserId);
-            if (artist != null)
-                artist.Name = request.RequestedUsername;
+        var artist = await _db.Artists.FindAsync(request.UserId);
+
+        if (artist == null)
+        {
+            artist = new Artist
+            {
+                Id = request.UserId,
+                Name = request.RequestedUsername
+            };
+
+            _db.Artists.Add(artist);
+        }
+        else
+        {
+            artist.Name = request.RequestedUsername;
         }
 
         request.User.Role = UserRole.Artist;
         request.Status = AuthorRequestStatus.Approved;
 
         await _db.SaveChangesAsync();
+
         return Ok("Author approved");
     }
 
