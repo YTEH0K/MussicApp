@@ -8,14 +8,15 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using MussicApp.Data;
 using MussicApp.Models.Other;
-using MussicApp.Services.Admin;
 using MussicApp.Services;
+using MussicApp.Services;
+using MussicApp.Services;
+using MussicApp.Services.Admin;
+using MussicApp.Services.Advertisements;
 using MussicApp.Services.Other;
 using MussicApp.Services.Radio;
-using MussicApp.Services;
-using MussicApp.Services;
-using System.Text;
 using Stripe;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,7 @@ builder.Services.AddScoped<IRadioService, RadioService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.Configure<StripeSettings>(
     builder.Configuration.GetSection("Stripe"));
+builder.Services.AddScoped<IAdService, AdService>();
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>

@@ -27,7 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
     public DbSet<Genre> Genres => Set<Genre>();
     public DbSet<UserFavoriteGenre> UserFavoriteGenres => Set<UserFavoriteGenre>();
-
+    public DbSet<Advertisement> Advertisements { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
