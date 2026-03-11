@@ -6,11 +6,16 @@ namespace MussicApp.Services.Advertisements
     {
         Task<Advertisement> UploadAsync(
             IFormFile image,
+            IFormFile audio,
             string title,
             string? targetUrl);
 
-        Task<Advertisement?> GetRandomAsync();
+        Task<IEnumerable<Advertisement>> GetAllAsync();
 
         Task<Advertisement?> GetByIdAsync(Guid id);
+
+        Task<Advertisement?> GetRandomAsync();
+
+        Task DisableAsync(Guid id);
     }
 }

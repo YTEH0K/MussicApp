@@ -1,12 +1,10 @@
-﻿using MussicApp.Data;
-using MussicApp.Models.Other;
+﻿using Microsoft.EntityFrameworkCore;
 using MongoDB.Bson;
-using Microsoft.EntityFrameworkCore;
 using MussicApp.Data;
+using MussicApp.Models.Other;
 
 namespace MussicApp.Services.Advertisements
 {
-
     public class AdService : IAdService
     {
         private readonly AppDbContext _context;
@@ -22,31 +20,56 @@ namespace MussicApp.Services.Advertisements
 
         public async Task<Advertisement> UploadAsync(
             IFormFile image,
+            IFormFile audio,
             string title,
             string? targetUrl)
         {
-            ObjectId fileId;
+            ObjectId imageId;
+            ObjectId audioId;
 
             await using (var stream = image.OpenReadStream())
             {
-                fileId = await _files.UploadAsync(
+                imageId = await _files.UploadAsync(
                     stream,
                     image.FileName,
                     image.ContentType);
+            }
+
+            await using (var stream = audio.OpenReadStream())
+            {
+                audioId = await _files.UploadAsync(
+                    stream,
+                    audio.FileName,
+                    audio.ContentType);
             }
 
             var ad = new Advertisement
             {
                 Id = Guid.NewGuid(),
                 Title = title,
-                ImageFileId = fileId.ToString(),
+                ImageFileId = imageId.ToString(),
+                AudioFileId = audioId.ToString(),
                 TargetUrl = targetUrl
             };
 
             _context.Advertisements.Add(ad);
+
             await _context.SaveChangesAsync();
 
             return ad;
+        }
+
+        public async Task<IEnumerable<Advertisement>> GetAllAsync()
+        {
+            return await _context.Advertisements
+                .Where(a => a.IsActive)
+                .ToListAsync();
+        }
+
+        public async Task<Advertisement?> GetByIdAsync(Guid id)
+        {
+            return await _context.Advertisements
+                .FirstOrDefaultAsync(x => x.Id == id);
         }
 
         public async Task<Advertisement?> GetRandomAsync()
@@ -57,10 +80,17 @@ namespace MussicApp.Services.Advertisements
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<Advertisement?> GetByIdAsync(Guid id)
+        public async Task DisableAsync(Guid id)
         {
-            return await _context.Advertisements
+            var ad = await _context.Advertisements
                 .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (ad == null)
+                throw new InvalidOperationException("Ad not found");
+
+            ad.IsActive = false;
+
+            await _context.SaveChangesAsync();
         }
     }
 }
