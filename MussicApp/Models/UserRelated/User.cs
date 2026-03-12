@@ -28,6 +28,9 @@ public class User
     public ICollection<UserLikedTrack> LikedTracks { get; set; }
         = new List<UserLikedTrack>();
 
+    public ICollection<UserArtistSubscription> ArtistSubscriptions { get; set; }
+    = new List<UserArtistSubscription>();
+
     public ICollection<UserFavoriteGenre> FavoriteGenres { get; set; } = [];
     public UserRole Role { get; set; } = UserRole.User;
     public string? StripeCustomerId { get; set; }

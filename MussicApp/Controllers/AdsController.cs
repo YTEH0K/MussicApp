@@ -108,4 +108,13 @@ public class AdsController : ControllerBase
 
         return NoContent();
     }
+
+    [Authorize(Roles = "admin")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _ads.DeleteAsync(id);
+
+        return NoContent();
+    }
 }

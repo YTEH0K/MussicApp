@@ -92,5 +92,22 @@ namespace MussicApp.Services.Advertisements
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeleteAsync(Guid id)
+        {
+            var ad = await _context.Advertisements
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (ad == null)
+                throw new InvalidOperationException("Advertisement not found");
+
+            await _files.DeleteAsync(ObjectId.Parse(ad.AudioFileId));
+
+            await _files.DeleteAsync(ObjectId.Parse(ad.ImageFileId));
+
+            _context.Advertisements.Remove(ad);
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

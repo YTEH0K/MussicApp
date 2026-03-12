@@ -25,4 +25,14 @@ public interface IUserService
 
     Task SetAvatarAsync(Guid userId, IFormFile avatar);
     Task<(byte[] Data, string ContentType)?> GetAvatarAsync(Guid userId);
+
+
+
+    Task SubscribeToArtistAsync(Guid userId, Guid artistId);
+
+    Task UnsubscribeFromArtistAsync(Guid userId, Guid artistId);
+
+    Task<IEnumerable<Artist>> GetSubscribedArtistsAsync(Guid userId);
+
+    Task<bool> IsSubscribedAsync(Guid userId, Guid artistId);
 }

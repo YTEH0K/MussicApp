@@ -372,6 +372,75 @@ public class AuthController : ControllerBase
             return Ok(countries);
         }
     }
+
+
+    [Authorize]
+    [HttpPost("subscribe/{artistId:guid}")]
+    public async Task<IActionResult> Subscribe(Guid artistId)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        await _users.SubscribeToArtistAsync(userId, artistId);
+
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpDelete("unsubscribe/{artistId:guid}")]
+    public async Task<IActionResult> Unsubscribe(Guid artistId)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        await _users.UnsubscribeFromArtistAsync(userId, artistId);
+
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpGet("subscriptions")]
+    public async Task<IActionResult> Subscriptions()
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var artists = await _users.GetSubscribedArtistsAsync(userId);
+
+        return Ok(artists.Select(a => new
+        {
+            a.Id,
+            a.Name
+        }));
+    }
+
+    [Authorize]
+    [HttpGet("subscriptions/{artistId:guid}")]
+    public async Task<IActionResult> IsSubscribed(Guid artistId)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var result = await _users.IsSubscribedAsync(userId, artistId);
+
+        return Ok(new { subscribed = result });
+    }
+
+    [HttpGet("artists/{artistId:guid}/followers-count")]
+    public async Task<IActionResult> GetFollowersCount(Guid artistId)
+    {
+        var count = await _db.UserArtistSubscriptions
+            .CountAsync(x => x.ArtistId == artistId);
+
+        return Ok(new
+        {
+            followers = count
+        });
+    }
 }
 
 public record RegisterDto(

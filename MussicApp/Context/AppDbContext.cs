@@ -28,7 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<Genre> Genres => Set<Genre>();
     public DbSet<UserFavoriteGenre> UserFavoriteGenres => Set<UserFavoriteGenre>();
     public DbSet<Advertisement> Advertisements { get; set; }
-
+    public DbSet<UserArtistSubscription> UserArtistSubscriptions { get; set; }
+    public DbSet<Banner> Banners { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -48,6 +49,23 @@ public class AppDbContext : DbContext
             .HasOne(ul => ul.Track)
             .WithMany(t => t.LikedByUsers)
             .HasForeignKey(ul => ul.TrackId);
+
+        // ================================
+        // UserArtistSubscription (many-to-many)
+        // ================================
+
+        modelBuilder.Entity<UserArtistSubscription>()
+            .HasKey(x => new { x.UserId, x.ArtistId });
+
+        modelBuilder.Entity<UserArtistSubscription>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.ArtistSubscriptions)
+            .HasForeignKey(x => x.UserId);
+
+        modelBuilder.Entity<UserArtistSubscription>()
+            .HasOne(x => x.Artist)
+            .WithMany(x => x.Subscribers)
+            .HasForeignKey(x => x.ArtistId);
 
         // ================================
         // AlbumTrack (many-to-many)

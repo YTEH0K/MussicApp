@@ -17,5 +17,7 @@ namespace MussicApp.Services.Advertisements
         Task<Advertisement?> GetRandomAsync();
 
         Task DisableAsync(Guid id);
+
+        Task DeleteAsync(Guid id);
     }
 }

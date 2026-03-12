@@ -164,4 +164,54 @@ public class UserService : IUserService
         return (data, contentType);
     }
 
+    public async Task SubscribeToArtistAsync(Guid userId, Guid artistId)
+    {
+        var exists = await _db.UserArtistSubscriptions
+            .AnyAsync(x => x.UserId == userId && x.ArtistId == artistId);
+
+        if (exists)
+            return;
+
+        var subscription = new UserArtistSubscription
+        {
+            UserId = userId,
+            ArtistId = artistId
+        };
+
+        _db.UserArtistSubscriptions.Add(subscription);
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UnsubscribeFromArtistAsync(Guid userId, Guid artistId)
+    {
+        var subscription = await _db.UserArtistSubscriptions
+            .FirstOrDefaultAsync(x =>
+                x.UserId == userId &&
+                x.ArtistId == artistId);
+
+        if (subscription == null)
+            return;
+
+        _db.UserArtistSubscriptions.Remove(subscription);
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<Artist>> GetSubscribedArtistsAsync(Guid userId)
+    {
+        return await _db.UserArtistSubscriptions
+            .Where(x => x.UserId == userId)
+            .Select(x => x.Artist)
+            .ToListAsync();
+    }
+
+    public async Task<bool> IsSubscribedAsync(Guid userId, Guid artistId)
+    {
+        return await _db.UserArtistSubscriptions
+            .AnyAsync(x =>
+                x.UserId == userId &&
+                x.ArtistId == artistId);
+    }
+
 }

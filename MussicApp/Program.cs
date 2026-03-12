@@ -13,6 +13,7 @@ using MussicApp.Services;
 using MussicApp.Services;
 using MussicApp.Services.Admin;
 using MussicApp.Services.Advertisements;
+using MussicApp.Services.Banner;
 using MussicApp.Services.Other;
 using MussicApp.Services.Radio;
 using Stripe;
@@ -79,6 +80,7 @@ builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.Configure<StripeSettings>(
     builder.Configuration.GetSection("Stripe"));
 builder.Services.AddScoped<IAdService, AdService>();
+builder.Services.AddScoped<IBannerService, BannerService>();
 
 /* ---------- Controllers ---------- */
 builder.Services.AddControllers(options =>
